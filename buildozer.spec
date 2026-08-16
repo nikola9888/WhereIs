@@ -16,7 +16,7 @@ requirements = python3,kivy,requests
 
 # Python for Android
 p4a.branch = master
-p4a.python_version = 3.10
+p4a.python_version = 3.11
 
 
 orientation = portrait
