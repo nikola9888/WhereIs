@@ -1,0 +1,99 @@
+name: WhereIs APK
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+
+    runs-on: ubuntu-22.04
+
+    container:
+      image: kivy/buildozer:latest
+
+    env:
+      ACCEPT_ANDROID_SDK_LICENSE: "yes"
+
+    steps:
+
+    - name: Checkout
+      uses: actions/checkout@v4
+
+
+    - name: Install tools
+      run: |
+        pip install --upgrade pip
+        pip install buildozer==1.6.0
+        pip install Cython==0.29.37
+        pip install sh
+
+
+    - name: Restore keystore
+      run: |
+        echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 --decode > whereis.keystore
+
+
+    - name: Verify keystore
+      run: |
+        keytool -list \
+        -keystore whereis.keystore \
+        -storepass WalletCore123!
+
+
+    - name: Check files
+      run: |
+        ls -la
+        ls -la whereis.keystore
+
+
+    - name: Prepare build
+      run: |
+        chmod -R 777 .
+
+
+    - name: Clean build
+      run: |
+        rm -rf .buildozer
+        rm -rf bin
+
+
+    - name: Build signed APK
+      run: |
+        yes | buildozer android release
+
+
+    - name: Build unsigned APK
+      run: |
+        yes | buildozer android release
+
+
+    - name: Sign APK manually
+      run: |
+        jarsigner \
+        -verbose \
+        -sigalg SHA256withRSA \
+        -digestalg SHA-256 \
+        -keystore whereis.keystore \
+        -storepass WalletCore123! \
+        -keypass WalletCore123! \
+        -signedjar bin/whereis-signed.apk \
+        bin/whereis-1.0.0-arm64-v8a-release.apk \
+        whereis
+
+
+    - name: Verify signed APK
+      run: |
+        jarsigner -verify -verbose -certs bin/whereis-signed.apk
+
+
+    - name: Check APK
+      run: |
+        ls -lh bin/
+        unzip -l bin/whereis-signed.apk | grep META-INF
+
+
+    - name: Upload APK
+      uses: actions/upload-artifact@v4
+      with:
+        name: WhereIs-release-apk
+        path: bin/whereis-signed.apk
