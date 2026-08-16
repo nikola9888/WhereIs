@@ -13,24 +13,17 @@ jobs:
 
     env:
       ACCEPT_ANDROID_SDK_LICENSE: "yes"
-      PIP_DISABLE_PIP_VERSION_CHECK: "1"
 
     steps:
 
     - name: Checkout
       uses: actions/checkout@v4
 
-    - name: Check Python
+    - name: Check environment
       run: |
         python3 --version
         python --version
-        pip --version
-
-    - name: Install Buildozer
-      run: |
-        python3 -m pip install --upgrade pip
-        python3 -m pip install buildozer==1.6.0
-        python3 -m pip install sh
+        buildozer --version
 
     - name: Check files
       run: |
