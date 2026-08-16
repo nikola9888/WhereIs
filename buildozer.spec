@@ -1,56 +1,54 @@
-[app]
+name: WhereIs APK
 
-title = WhereIs
+on:
+  workflow_dispatch:
 
-package.name = whereis
-package.domain = com.develop4world
+jobs:
+  build:
 
-source.dir = .
+    runs-on: ubuntu-22.04
 
-source.include_exts = py,png,jpg,jpeg,kv,json,atlas,ttf
+    container:
+      image: kivy/buildozer:latest
 
-version = 1.0.0
-android.numeric_version = 100000
+    env:
+      ACCEPT_ANDROID_SDK_LICENSE: "yes"
 
-requirements = python3,kivy,requests
+    steps:
 
-# Python for Android
-p4a.branch = master
-p4a.python_version = 3.11
+    - name: Checkout
+      uses: actions/checkout@v4
 
+    - name: Check environment
+      run: |
+        python3 --version
+        python --version
+        buildozer --version
 
-orientation = portrait
+    - name: Check files
+      run: |
+        ls -la
+        test -f buildozer.spec
 
-fullscreen = 1
+    - name: Prepare build
+      run: |
+        chmod -R 777 .
 
-icon.filename = assets/icon.png
+    - name: Clean build
+      run: |
+        rm -rf .buildozer
+        rm -rf bin
 
+    - name: Build APK
+      run: |
+        yes | buildozer android debug
 
-# Android
-android.api = 36
-android.minapi = 24
-android.build_tools_version = 35.0.0
-android.accept_sdk_license = True
+    - name: Check APK
+      run: |
+        ls -lh bin/
 
-android.ndk = 25c
-
-android.archs = arm64-v8a
-android.debug_artifact = apk
-
-
-android.enable_androidx = True
-
-android.private_storage = True
-
-android.allow_backup = True
-
-
-# Permissions
-# android.permissions = INTERNET
-
-
-[buildozer]
-
-log_level = 2
-
-warn_on_root = 0
+    - name: Upload APK
+      uses: actions/upload-artifact@v4
+      with:
+        name: WhereIs-release-apk
+        path: bin/*.apk
