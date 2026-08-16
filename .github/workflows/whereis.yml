@@ -31,6 +31,8 @@ jobs:
     - name: Check files
       run: |
         ls -la
+        echo "Checking buildozer.spec..."
+        ls -la buildozer.spec
 
 
     - name: Prepare build
@@ -46,7 +48,7 @@ jobs:
 
     - name: Build APK
       run: |
-        yes | buildozer android release
+        yes | buildozer android debug
 
 
     - name: Check APK
