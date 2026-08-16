@@ -28,22 +28,9 @@ jobs:
         pip install sh
 
 
-    - name: Restore keystore
-      run: |
-        echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 --decode > whereis.keystore
-
-
-    - name: Verify keystore
-      run: |
-        keytool -list \
-        -keystore whereis.keystore \
-        -storepass WalletCore123!
-
-
     - name: Check files
       run: |
         ls -la
-        ls -la whereis.keystore
 
 
     - name: Prepare build
@@ -57,43 +44,18 @@ jobs:
         rm -rf bin
 
 
-    - name: Build signed APK
+    - name: Build APK
       run: |
         yes | buildozer android release
-
-
-    - name: Build unsigned APK
-      run: |
-        yes | buildozer android release
-
-
-    - name: Sign APK manually
-      run: |
-        jarsigner \
-        -verbose \
-        -sigalg SHA256withRSA \
-        -digestalg SHA-256 \
-        -keystore whereis.keystore \
-        -storepass WalletCore123! \
-        -keypass WalletCore123! \
-        -signedjar bin/whereis-signed.apk \
-        bin/whereis-1.0.0-arm64-v8a-release.apk \
-        whereis
-
-
-    - name: Verify signed APK
-      run: |
-        jarsigner -verify -verbose -certs bin/whereis-signed.apk
 
 
     - name: Check APK
       run: |
         ls -lh bin/
-        unzip -l bin/whereis-signed.apk | grep META-INF
 
 
     - name: Upload APK
       uses: actions/upload-artifact@v4
       with:
         name: WhereIs-release-apk
-        path: bin/whereis-signed.apk
+        path: bin/*.apk
