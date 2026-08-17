@@ -12,7 +12,7 @@ source.include_exts = py,png,jpg,jpeg,kv,json,atlas,ttf
 version = 1.0.0
 android.numeric_version = 100000
 
-requirements = python3,kivy,requests
+requirements = python3,kivy
 
 p4a.branch = master
 p4a.python_version = 3.11
