@@ -14,17 +14,17 @@ android.numeric_version = 100000
 
 requirements = python3,kivy,requests
 
-# Python for Android
-p4a.branch = develop
-p4a.python_version = 3.14
+p4a.branch = master
+p4a.python_version = 3.11
 
 orientation = portrait
 fullscreen = 1
 
 icon.filename = assets/icon.png
 
+
 # Android
-android.api = 36
+android.api = 35
 android.minapi = 24
 android.build_tools_version = 35.0.0
 android.accept_sdk_license = True
@@ -39,8 +39,6 @@ android.enable_androidx = True
 android.private_storage = True
 android.allow_backup = True
 
-# Permissions
-# android.permissions = INTERNET
 
 [buildozer]
 
