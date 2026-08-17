@@ -12,9 +12,9 @@ source.include_exts = py,png,jpg,jpeg,kv,json,atlas,ttf
 version = 1.0.0
 android.numeric_version = 100000
 
-requirements = python3,kivy
+requirements = python3,kivy,pyjnius
 
-p4a.branch = master
+p4a.branch = develop
 p4a.python_version = 3.11
 
 orientation = portrait
