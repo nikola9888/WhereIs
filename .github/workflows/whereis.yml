@@ -19,6 +19,13 @@ jobs:
     - name: Checkout
       uses: actions/checkout@v4
 
+    - name: Install tools
+      run: |
+        pip install --upgrade pip
+        pip install buildozer==1.6.0
+        pip install Cython==0.29.37
+        pip install sh
+
     - name: Check environment
       run: |
         python3 --version
