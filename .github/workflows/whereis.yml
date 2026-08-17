@@ -22,13 +22,17 @@ jobs:
     - name: Check environment
       run: |
         python3 --version
-        python --version
+        pip --version
         buildozer --version
+        echo "ANDROIDAPI=$ANDROIDAPI"
+        echo "ANDROIDMINAPI=$ANDROIDMINAPI"
+        echo "ANDROIDNDK=$ANDROIDNDK"
 
     - name: Check files
       run: |
         ls -la
-        test -f buildozer.spec
+        echo "Checking buildozer.spec..."
+        cat buildozer.spec
 
     - name: Prepare build
       run: |
