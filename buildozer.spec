@@ -14,7 +14,7 @@ android.numeric_version = 100000
 
 requirements = python3,kivy,pyjnius
 
-p4a.branch = develop
+p4a.branch = master
 p4a.python_version = 3.10
 
 orientation = portrait
