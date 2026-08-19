@@ -8,89 +8,163 @@ jobs:
 
     runs-on: ubuntu-22.04
 
-    container:
-      image: python:3.14-bookworm
-
-    env:
-      ACCEPT_ANDROID_SDK_LICENSE: "yes"
-      PYTHONFORANDROID_PREREQUISITES_INSTALL_INTERACTIVE: "0"
-
     steps:
 
-    - name: Checkout
-      uses: actions/checkout@v4
+      - name: Checkout
+        uses: actions/checkout@v4
 
-    - name: Install system dependencies
-      run: |
-        apt-get update
+      # --------------------------------------------------
+      # Python 3.11
+      # --------------------------------------------------
 
-        apt-get install -y \
-          git \
-          zip \
-          unzip \
-          openjdk-17-jdk \
-          autoconf \
-          automake \
-          libtool \
-          pkg-config \
-          zlib1g-dev \
-          libncurses5-dev \
-          libncursesw5-dev \
-          libtinfo6 \
-          cmake \
-          libffi-dev \
-          libssl-dev \
-          libjpeg-dev \
-          libpng-dev \
-          libfreetype6-dev \
-          build-essential \
-          ccache
+      - name: Setup Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11.9"
+          cache: "pip"
 
-    - name: Check Python
-      run: |
-        echo "=== PYTHON ==="
-        python3 --version
-        which python3
+      # --------------------------------------------------
+      # System dependencies
+      # --------------------------------------------------
 
-        echo "=== PIP ==="
-        python3 -m pip --version
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update
 
-    - name: Install Buildozer
-      run: |
-        python3 -m pip install --upgrade pip
-        python3 -m pip install \
-          "buildozer" \
-          "cython<3.0" \
-          setuptools
+          sudo apt-get install -y \
+            git \
+            zip \
+            unzip \
+            openjdk-17-jdk \
+            autoconf \
+            automake \
+            libtool \
+            pkg-config \
+            zlib1g-dev \
+            libncurses5-dev \
+            libncursesw5-dev \
+            cmake \
+            ccache
 
-    - name: Check Buildozer
-      run: |
-        buildozer --version
+      # --------------------------------------------------
+      # Java
+      # --------------------------------------------------
 
-    - name: Check project
-      run: |
-        echo "=== PROJECT FILES ==="
-        find . -maxdepth 2 -type f | sort
+      - name: Configure Java
+        run: |
+          echo "JAVA_HOME=$JAVA_HOME_17_X64" >> $GITHUB_ENV
+          echo "$JAVA_HOME_17_X64/bin" >> $GITHUB_PATH
 
-        echo "=== BUILDOZER SPEC ==="
-        cat buildozer.spec
+      # --------------------------------------------------
+      # Python packages
+      # --------------------------------------------------
 
-    - name: Clean old build
-      run: |
-        rm -rf .buildozer
-        rm -rf bin
+      - name: Install Python build tools
+        run: |
+          python --version
+          python -m pip install --upgrade pip
 
-    - name: Build APK
-      run: |
-        yes | buildozer android debug
+          python -m pip install \
+            buildozer \
+            cython==0.29.37 \
+            virtualenv
 
-    - name: Check APK
-      run: |
-        echo "=== APK FILES ==="
-        ls -lh bin/
+      # --------------------------------------------------
+      # Verify Buildozer
+      # --------------------------------------------------
 
-    - name: Upload APK
-      uses: actions/upload-artifact@v4
-      with:
-        name: WhereIs-release-apk
-        path: bin/*.apk
+      - name: Check Build environment
+        run: |
+          echo "======================================"
+          echo "PYTHON"
+          echo "======================================"
+
+          python --version
+          which python
+
+          echo "======================================"
+          echo "PIP"
+          echo "======================================"
+
+          pip --version
+
+          echo "======================================"
+          echo "BUILDOZER"
+          echo "======================================"
+
+          buildozer --version
+
+          echo "======================================"
+          echo "JAVA"
+          echo "======================================"
+
+          java -version
+
+      # --------------------------------------------------
+      # Check project
+      # --------------------------------------------------
+
+      - name: Check project files
+        run: |
+          echo "======================================"
+          echo "PROJECT FILES"
+          echo "======================================"
+
+          find . -maxdepth 3 -type f | sort
+
+          echo "======================================"
+          echo "BUILDOZER SPEC"
+          echo "======================================"
+
+          cat buildozer.spec
+
+      # --------------------------------------------------
+      # Clean everything
+      # --------------------------------------------------
+
+      - name: Clean Buildozer
+        run: |
+          rm -rf .buildozer
+          rm -rf bin
+
+          mkdir -p bin
+
+      # --------------------------------------------------
+      # Build APK
+      # --------------------------------------------------
+
+      - name: Build WhereIs APK
+        env:
+          ACCEPT_ANDROID_SDK_LICENSE: "yes"
+          PYTHONFORANDROID_PREREQUISITES_INSTALL_INTERACTIVE: "0"
+        run: |
+          yes | buildozer android debug
+
+      # --------------------------------------------------
+      # Check result
+      # --------------------------------------------------
+
+      - name: Check APK
+        run: |
+          echo "======================================"
+          echo "APK FILES"
+          echo "======================================"
+
+          ls -lah bin/
+
+          echo "======================================"
+          echo "APK SHA256"
+          echo "======================================"
+
+          sha256sum bin/*.apk
+
+      # --------------------------------------------------
+      # Upload APK
+      # --------------------------------------------------
+
+      - name: Upload WhereIs APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: WhereIs-release-apk
+          path: bin/*.apk
+          if-no-files-found: error
