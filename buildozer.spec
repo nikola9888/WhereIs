@@ -6,14 +6,14 @@ package.name = whereis
 package.domain = com.develop4world
 
 source.dir = .
-
 source.include_exts = py,png,jpg,jpeg,kv,json,atlas,ttf
 
 version = 1.0.0
 android.numeric_version = 100000
 
-requirements = python3,kivy,pyjnius,pillow
+requirements = python3==3.11.9,kivy,pyjnius,pillow
 
+p4a.branch = develop
 p4a.python_version = 3.11
 
 orientation = portrait
