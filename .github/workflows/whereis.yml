@@ -13,6 +13,7 @@ jobs:
 
     env:
       ACCEPT_ANDROID_SDK_LICENSE: "yes"
+      PYTHONFORANDROID_PREREQUISITES_INSTALL_INTERACTIVE: "0"
 
     steps:
 
@@ -21,22 +22,35 @@ jobs:
 
     - name: Check environment
       run: |
+        echo "=== SYSTEM PYTHON ==="
         python3 --version
+        which python3
+
+        echo "=== PIP ==="
         pip --version
+
+        echo "=== BUILDOZER ==="
         buildozer --version
+
+        echo "=== ANDROID ==="
         echo "ANDROIDAPI=$ANDROIDAPI"
         echo "ANDROIDMINAPI=$ANDROIDMINAPI"
         echo "ANDROIDNDK=$ANDROIDNDK"
 
-    - name: Check files
+    - name: Check project
       run: |
+        echo "=== FILES ==="
         ls -la
-        echo "Checking buildozer.spec..."
+
+        echo "=== BUILDOZER SPEC ==="
         cat buildozer.spec
 
-    - name: Prepare build
-      run: |
-        chmod -R 777 .
+        echo "=== REQUIREMENTS FILES ==="
+        find . -maxdepth 3 -type f \( \
+          -name "requirements.txt" -o \
+          -name "pyproject.toml" -o \
+          -name "setup.py" \
+        \) -print
 
     - name: Clean build
       run: |
@@ -49,6 +63,7 @@ jobs:
 
     - name: Check APK
       run: |
+        echo "=== APK ==="
         ls -lh bin/
 
     - name: Upload APK
