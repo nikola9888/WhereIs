@@ -8,85 +8,89 @@ jobs:
 
     runs-on: ubuntu-22.04
 
+    container:
+      image: python:3.14-bookworm
+
     env:
       ACCEPT_ANDROID_SDK_LICENSE: "yes"
       PYTHONFORANDROID_PREREQUISITES_INSTALL_INTERACTIVE: "0"
 
     steps:
 
-      - name: Checkout
-        uses: actions/checkout@v4
+    - name: Checkout
+      uses: actions/checkout@v4
 
-      - name: Set up Python 3.11
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.11.9"
+    - name: Install system dependencies
+      run: |
+        apt-get update
 
-      - name: Check environment
-        run: |
-          echo "=== PYTHON ==="
-          python --version
-          python3 --version
+        apt-get install -y \
+          git \
+          zip \
+          unzip \
+          openjdk-17-jdk \
+          autoconf \
+          automake \
+          libtool \
+          pkg-config \
+          zlib1g-dev \
+          libncurses5-dev \
+          libncursesw5-dev \
+          libtinfo6 \
+          cmake \
+          libffi-dev \
+          libssl-dev \
+          libjpeg-dev \
+          libpng-dev \
+          libfreetype6-dev \
+          build-essential \
+          ccache
 
-          echo "=== PIP ==="
-          python -m pip --version
+    - name: Check Python
+      run: |
+        echo "=== PYTHON ==="
+        python3 --version
+        which python3
 
-          echo "=== JAVA ==="
-          java -version
+        echo "=== PIP ==="
+        python3 -m pip --version
 
-          echo "=== ANDROID ==="
-          echo "ANDROID_HOME=$ANDROID_HOME"
+    - name: Install Buildozer
+      run: |
+        python3 -m pip install --upgrade pip
+        python3 -m pip install \
+          "buildozer" \
+          "cython<3.0" \
+          setuptools
 
-      - name: Install system dependencies
-        run: |
-          sudo apt-get update
+    - name: Check Buildozer
+      run: |
+        buildozer --version
 
-          sudo apt-get install -y \
-            git \
-            zip \
-            unzip \
-            openjdk-17-jdk \
-            autoconf \
-            automake \
-            libtool \
-            pkg-config \
-            zlib1g-dev \
-            libffi-dev \
-            libssl-dev
+    - name: Check project
+      run: |
+        echo "=== PROJECT FILES ==="
+        find . -maxdepth 2 -type f | sort
 
-      - name: Install Buildozer
-        run: |
-          python -m pip install --upgrade pip setuptools wheel
-          python -m pip install buildozer cython
+        echo "=== BUILDOZER SPEC ==="
+        cat buildozer.spec
 
-      - name: Check project
-        run: |
-          echo "=== PROJECT FILES ==="
-          ls -la
+    - name: Clean old build
+      run: |
+        rm -rf .buildozer
+        rm -rf bin
 
-          echo "=== BUILDOZER SPEC ==="
-          cat buildozer.spec
+    - name: Build APK
+      run: |
+        yes | buildozer android debug
 
-      - name: Clean build
-        run: |
-          rm -rf .buildozer
-          rm -rf bin
+    - name: Check APK
+      run: |
+        echo "=== APK FILES ==="
+        ls -lh bin/
 
-      - name: Build APK
-        run: |
-          yes | buildozer android debug
-
-      - name: Check APK
-        run: |
-          echo "=== BIN ==="
-          ls -lah bin/
-
-          echo "=== APK ==="
-          find bin -type f -name "*.apk" -print
-
-      - name: Upload APK
-        uses: actions/upload-artifact@v4
-        with:
-          name: WhereIs-debug-apk
-          path: bin/*.apk
-          if-no-files-found: error
+    - name: Upload APK
+      uses: actions/upload-artifact@v4
+      with:
+        name: WhereIs-release-apk
+        path: bin/*.apk
