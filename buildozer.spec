@@ -14,7 +14,9 @@ android.numeric_version = 100000
 
 requirements = python3,kivy,pyjnius,pillow
 
-p4a.python_version = 3.11
+# python-for-android develop currently requires a Python 3.14 host
+p4a.branch = develop
+p4a.python_version = 3.14
 
 orientation = portrait
 fullscreen = 1
@@ -23,12 +25,12 @@ icon.filename = assets/icon.png
 
 
 # Android
-android.api = 35
+android.api = 36
 android.minapi = 24
 android.build_tools_version = 35.0.0
 android.accept_sdk_license = True
 
-android.ndk = 25c
+android.ndk = 29
 
 android.archs = arm64-v8a
 
