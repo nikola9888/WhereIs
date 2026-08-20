@@ -14,13 +14,13 @@ jobs:
         uses: actions/checkout@v4
 
       # --------------------------------------------------
-      # Python 3.11
+      # Python 3.14
       # --------------------------------------------------
 
-      - name: Setup Python 3.11
+      - name: Setup Python 3.14
         uses: actions/setup-python@v5
         with:
-          python-version: "3.11.9"
+          python-version: "3.14.7"
 
 
       # --------------------------------------------------
@@ -44,7 +44,9 @@ jobs:
             libncurses5-dev \
             libncursesw5-dev \
             cmake \
-            ccache
+            ccache \
+            libffi-dev \
+            libssl-dev
 
       # --------------------------------------------------
       # Java
@@ -119,7 +121,7 @@ jobs:
           cat buildozer.spec
 
       # --------------------------------------------------
-      # Clean everything
+      # Clean Buildozer
       # --------------------------------------------------
 
       - name: Clean Buildozer
