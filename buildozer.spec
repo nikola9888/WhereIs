@@ -12,7 +12,7 @@ source.include_exts = py,png,jpg,jpeg,kv,json,atlas,ttf
 version = 1.0.0
 android.numeric_version = 100000
 
-requirements = python3,kivy,pyjnius,pillow
+requirements = python3,kivy,pyjnius,pillow,charset-normalizer==2.1.1
 
 # python-for-android develop currently requires a Python 3.14 host
 p4a.branch = develop
