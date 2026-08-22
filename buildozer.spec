@@ -13,8 +13,11 @@ android.numeric_version = 100000
 
 requirements = python3,kivy,pyjnius,pillow
 
-# Use the stable python-for-android branch with Python 3.12.
-p4a.branch = master
+# Pin python-for-android to the tested 2026.05.09 release.
+# Do not use master here: newer master currently resolves Python 3.14
+# and can select Android-specific charset-normalizer wheels during the
+# host-side pip installation stage.
+p4a.branch = v2026.05.09
 p4a.python_version = 3.12
 
 orientation = portrait
@@ -22,14 +25,13 @@ fullscreen = 1
 
 icon.filename = assets/icon.png
 
-# Android
-# Google Play currently requires target API 35 for new Android releases.
+# Android / Google Play
 android.api = 35
 android.minapi = 24
 android.build_tools_version = 35.0.0
 android.accept_sdk_license = True
 
-# Current python-for-android recommendation.
+# Keep the NDK version explicitly pinned for reproducible CI builds.
 android.ndk = 28c
 
 android.archs = arm64-v8a
@@ -37,7 +39,6 @@ android.archs = arm64-v8a
 android.debug_artifact = apk
 
 android.enable_androidx = True
-
 android.private_storage = True
 android.allow_backup = True
 
