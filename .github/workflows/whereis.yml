@@ -54,16 +54,22 @@ jobs:
           python --version
           python -m pip install --upgrade pip
           python -m pip install \
+            "setuptools==69.5.1" \
             "cython==0.29.34" \
             virtualenv \
             "buildozer==1.5.0"
 
       - name: Check build environment
+        env:
+          SETUPTOOLS_USE_DISTUTILS: "local"
         run: |
           echo "=== PYTHON ==="
           python --version
           which python
           python -m pip --version
+
+          echo "=== SETUPTOOLS / DISTUTILS ==="
+          python -c "import setuptools; import distutils; print('setuptools:', setuptools.__version__); print('distutils:', distutils.__file__)"
 
           echo "=== BUILDOZER ==="
           buildozer --version
@@ -84,6 +90,7 @@ jobs:
         env:
           ACCEPT_ANDROID_SDK_LICENSE: "yes"
           PYTHONFORANDROID_PREREQUISITES_INSTALL_INTERACTIVE: "0"
+          SETUPTOOLS_USE_DISTUTILS: "local"
         run: |
           buildozer android debug
 
