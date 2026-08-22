@@ -12,12 +12,12 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Setup Python 3.12
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v6
         with:
           python-version: "3.12"
 
       - name: Setup Java 17
-        uses: actions/setup-java@v4
+        uses: actions/setup-java@v5
         with:
           distribution: "temurin"
           java-version: "17"
@@ -56,7 +56,7 @@ jobs:
           python -m pip install \
             "cython==0.29.34" \
             virtualenv \
-            "git+https://github.com/kivy/buildozer.git"
+            "buildozer==1.5.0"
 
       - name: Check build environment
         run: |
