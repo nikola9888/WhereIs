@@ -1,172 +1,103 @@
-name: WhereIs APK
+name: WhereIs Android Build
 
 on:
   workflow_dispatch:
 
 jobs:
   build:
-
     runs-on: ubuntu-22.04
 
     steps:
-
       - name: Checkout
         uses: actions/checkout@v4
 
-      # --------------------------------------------------
-      # Python 3.14
-      # --------------------------------------------------
-
-      - name: Setup Python 3.14
+      - name: Setup Python 3.12
         uses: actions/setup-python@v5
         with:
-          python-version: "3.14.7"
+          python-version: "3.12"
+          cache: "pip"
 
-
-      # --------------------------------------------------
-      # System dependencies
-      # --------------------------------------------------
+      - name: Setup Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: "temurin"
+          java-version: "17"
 
       - name: Install system dependencies
         run: |
           sudo apt-get update
-
           sudo apt-get install -y \
             git \
             zip \
             unzip \
-            openjdk-17-jdk \
+            ant \
             autoconf \
             automake \
+            autopoint \
+            libltdl-dev \
             libtool \
             pkg-config \
             zlib1g-dev \
             libncurses5-dev \
             libncursesw5-dev \
+            libtinfo5 \
             cmake \
             ccache \
             libffi-dev \
-            libssl-dev
-
-      # --------------------------------------------------
-      # Java
-      # --------------------------------------------------
-
-      - name: Configure Java
-        run: |
-          echo "JAVA_HOME=$JAVA_HOME_17_X64" >> $GITHUB_ENV
-          echo "$JAVA_HOME_17_X64/bin" >> $GITHUB_PATH
-
-      # --------------------------------------------------
-      # Python packages
-      # --------------------------------------------------
+            libssl-dev \
+            build-essential \
+            gettext \
+            rustc \
+            cargo
 
       - name: Install Python build tools
         run: |
           python --version
           python -m pip install --upgrade pip
-
           python -m pip install \
-            buildozer \
-            cython==0.29.37 \
-            virtualenv
+            "cython==0.29.34" \
+            virtualenv \
+            "git+https://github.com/kivy/buildozer.git"
 
-      # --------------------------------------------------
-      # Verify Buildozer
-      # --------------------------------------------------
-
-      - name: Check Build environment
+      - name: Check build environment
         run: |
-          echo "======================================"
-          echo "PYTHON"
-          echo "======================================"
-
+          echo "=== PYTHON ==="
           python --version
           which python
+          python -m pip --version
 
-          echo "======================================"
-          echo "PIP"
-          echo "======================================"
-
-          pip --version
-
-          echo "======================================"
-          echo "BUILDOZER"
-          echo "======================================"
-
+          echo "=== BUILDOZER ==="
           buildozer --version
 
-          echo "======================================"
-          echo "JAVA"
-          echo "======================================"
-
+          echo "=== JAVA ==="
           java -version
 
-      # --------------------------------------------------
-      # Check project
-      # --------------------------------------------------
-
-      - name: Check project files
-        run: |
-          echo "======================================"
-          echo "PROJECT FILES"
-          echo "======================================"
-
-          find . -maxdepth 3 -type f | sort
-
-          echo "======================================"
-          echo "BUILDOZER SPEC"
-          echo "======================================"
-
+          echo "=== SPEC ==="
           cat buildozer.spec
-
-      # --------------------------------------------------
-      # Clean Buildozer
-      # --------------------------------------------------
 
       - name: Clean Buildozer
         run: |
           rm -rf .buildozer
           rm -rf bin
-
           mkdir -p bin
-
-      # --------------------------------------------------
-      # Build APK
-      # --------------------------------------------------
 
       - name: Build WhereIs APK
         env:
           ACCEPT_ANDROID_SDK_LICENSE: "yes"
           PYTHONFORANDROID_PREREQUISITES_INSTALL_INTERACTIVE: "0"
         run: |
-          yes | buildozer android debug
-
-      # --------------------------------------------------
-      # Check result
-      # --------------------------------------------------
+          buildozer android debug
 
       - name: Check APK
         run: |
-          echo "======================================"
-          echo "APK FILES"
-          echo "======================================"
-
+          echo "=== APK FILES ==="
           ls -lah bin/
-
-          echo "======================================"
-          echo "APK SHA256"
-          echo "======================================"
-
+          echo "=== APK SHA256 ==="
           sha256sum bin/*.apk
-
-      # --------------------------------------------------
-      # Upload APK
-      # --------------------------------------------------
 
       - name: Upload WhereIs APK
         uses: actions/upload-artifact@v4
         with:
-          name: WhereIs-release-apk
+          name: WhereIs-debug-apk
           path: bin/*.apk
           if-no-files-found: error
