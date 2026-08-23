@@ -13,12 +13,9 @@ android.numeric_version = 100000
 
 requirements = python3,kivy,pyjnius,pillow
 
-# Pin python-for-android to the tested 2026.05.09 release.
-# Do not use master here: newer master currently resolves Python 3.14
-# and can select Android-specific charset-normalizer wheels during the
-# host-side pip installation stage.
-p4a.branch = v2026.05.09
-p4a.python_version = 3.12
+# Use the same python-for-android setup as the working WalletCore build.
+p4a.branch = master
+p4a.python_version = 3.10
 
 orientation = portrait
 fullscreen = 1
@@ -31,11 +28,9 @@ android.minapi = 24
 android.build_tools_version = 35.0.0
 android.accept_sdk_license = True
 
-# Keep the NDK version explicitly pinned for reproducible CI builds.
-android.ndk = 28c
+android.ndk = 25c
 
 android.archs = arm64-v8a
-
 android.debug_artifact = apk
 
 android.enable_androidx = True
