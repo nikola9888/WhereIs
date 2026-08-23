@@ -22,7 +22,8 @@ p4a.python_version = 3.10
 orientation = portrait
 fullscreen = 1
 
-icon.filename = assets/icon.png
+# Use an existing valid PNG from the repository as the Android icon.
+icon.filename = assets/Icon.png/home.png
 
 # Android / Google Play
 android.api = 35
