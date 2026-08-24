@@ -424,10 +424,6 @@ class AddItemScreen(Screen):
                 print("GALLERY: COPY FAILED")
                 return
 
-            # Do not simply rename the Android source to .jpg.
-            # Android may return HEIC/WEBP/PNG data even though the
-            # picker MIME type is image/*. Decode it with Pillow and
-            # save a real JPEG for Kivy and the database.
             converted = self.image_manager.copy_and_resize(
                 raw_path,
                 max_size=1600,
@@ -451,13 +447,55 @@ class AddItemScreen(Screen):
             print("COPY GALLERY IMAGE ERROR:", repr(e))
 
     def set_preview(self, path):
+        """Load a newly-created local image after the file is fully ready.
+
+        Android/Kivy can otherwise start loading the file while the previous
+        texture is still attached to the Image widget. The result can be a
+        black preview until the app is restarted. The short scheduled reloads
+        force Kivy to read the finished JPEG again without changing the saved
+        file path in the database.
+        """
+        if not path or not os.path.isfile(path):
+            print("PREVIEW FILE INVALID:", path)
+            return
+
         try:
-            self.preview.source = ""
-            self.preview.texture = None
-            self.preview.source = path
-            self.preview.reload()
+            if os.path.getsize(path) <= 0:
+                print("PREVIEW FILE EMPTY:", path)
+                return
         except Exception as e:
-            print("PREVIEW ERROR:", repr(e))
+            print("PREVIEW FILE CHECK ERROR:", repr(e))
+            return
+
+        def reload_preview(*args):
+            try:
+                if not os.path.isfile(path):
+                    return
+
+                if os.path.getsize(path) <= 0:
+                    return
+
+                self.preview.texture = None
+                self.preview.source = ""
+                self.preview.source = path
+                self.preview.reload()
+
+                print("PREVIEW RELOADED:", path)
+
+            except Exception as e:
+                print("PREVIEW RELOAD ERROR:", repr(e))
+
+        try:
+            self.preview.texture = None
+            self.preview.source = ""
+        except Exception:
+            pass
+
+        # First load on the next Kivy frame, then repeat after the file and
+        # Android/Kivy texture pipeline have had time to settle.
+        Clock.schedule_once(reload_preview, 0.05)
+        Clock.schedule_once(reload_preview, 0.25)
+        Clock.schedule_once(reload_preview, 0.60)
 
     def save_item(self, instance):
         app = App.get_running_app()
