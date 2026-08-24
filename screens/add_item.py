@@ -153,10 +153,6 @@ class AddItemScreen(Screen):
         back.bind(on_press=self.go_back)
         self.root_box.add_widget(back)
 
-    # =========================================================
-    # ANDROID ACTIVITY RESULT
-    # =========================================================
-
     def on_activity_result(self, request_code, result_code, intent):
         if request_code == self.CAMERA_REQUEST_CODE:
             try:
@@ -171,10 +167,6 @@ class AddItemScreen(Screen):
 
         if request_code == self.GALLERY_REQUEST_CODE:
             self.handle_gallery_result(result_code, intent)
-
-    # =========================================================
-    # INPUT
-    # =========================================================
 
     def create_input(self, hint, multiline, height):
         box = TextInput(
@@ -220,10 +212,6 @@ class AddItemScreen(Screen):
                 18
             )
 
-    # =========================================================
-    # CATEGORY
-    # =========================================================
-
     def load_categories(self):
         app = App.get_running_app()
         values = []
@@ -242,10 +230,6 @@ class AddItemScreen(Screen):
                 return cat[0]
 
         return None
-
-    # =========================================================
-    # IMAGE SELECTION
-    # =========================================================
 
     def choose_image(self, instance):
         from kivy.uix.popup import Popup
@@ -293,18 +277,31 @@ class AddItemScreen(Screen):
         popup.dismiss()
         Clock.schedule_once(lambda dt: self.open_gallery(), 0.15)
 
-    # =========================================================
-    # CAMERA
-    # =========================================================
-
     def open_camera(self):
         try:
-            app = App.get_running_app()
-            image_dir = os.path.join(app.user_data_dir, "images")
-            os.makedirs(image_dir, exist_ok=True)
-            self.camera.open(image_dir)
+            from android.permissions import request_permissions, Permission
+
+            def permission_callback(permissions, grants):
+                print("CAMERA PERMISSION RESULT:", permissions, grants)
+                if all(grants):
+                    Clock.schedule_once(
+                        lambda dt: self.camera.open(),
+                        0.1
+                    )
+                else:
+                    print("CAMERA PERMISSION DENIED")
+
+            request_permissions(
+                [Permission.CAMERA],
+                permission_callback
+            )
+
         except Exception as e:
-            print("OPEN CAMERA ERROR:", repr(e))
+            print("CAMERA PERMISSION ERROR:", repr(e))
+            try:
+                self.camera.open()
+            except Exception as camera_error:
+                print("OPEN CAMERA ERROR:", repr(camera_error))
 
     def on_camera_image(self, path):
         if not path or not os.path.isfile(path):
@@ -318,12 +315,18 @@ class AddItemScreen(Screen):
         except Exception:
             return
 
-        self.image_path = path
-        self.set_preview(path)
+        converted = self.image_manager.copy_and_resize(
+            path,
+            max_size=1600,
+            quality=92
+        )
 
-    # =========================================================
-    # GALLERY - NATIVE ANDROID PICKER
-    # =========================================================
+        if converted:
+            self.image_path = converted
+            self.set_preview(converted)
+        else:
+            self.image_path = path
+            self.set_preview(path)
 
     def open_gallery(self):
         try:
@@ -354,9 +357,9 @@ class AddItemScreen(Screen):
 
     def handle_gallery_result(self, result_code, intent):
         try:
-            Activity = __import__(
-                "jnius"
-            ).autoclass("android.app.Activity")
+            from jnius import autoclass
+
+            Activity = autoclass("android.app.Activity")
 
             if result_code != Activity.RESULT_OK or intent is None:
                 return
@@ -393,12 +396,12 @@ class AddItemScreen(Screen):
             image_dir = os.path.join(app.user_data_dir, "images")
             os.makedirs(image_dir, exist_ok=True)
 
-            path = os.path.join(
+            raw_path = os.path.join(
                 image_dir,
-                "gallery_" + str(int(time.time() * 1000)) + ".jpg"
+                "gallery_raw_" + str(int(time.time() * 1000))
             )
 
-            output = FileOutputStream(path)
+            output = FileOutputStream(raw_path)
 
             try:
                 buffer = bytearray(64 * 1024)
@@ -417,13 +420,32 @@ class AddItemScreen(Screen):
                 except Exception:
                     pass
 
-            if not os.path.isfile(path) or os.path.getsize(path) <= 0:
+            if not os.path.isfile(raw_path) or os.path.getsize(raw_path) <= 0:
                 print("GALLERY: COPY FAILED")
                 return
 
-            self.image_path = path
-            self.set_preview(path)
-            print("GALLERY IMAGE:", path)
+            # Do not simply rename the Android source to .jpg.
+            # Android may return HEIC/WEBP/PNG data even though the
+            # picker MIME type is image/*. Decode it with Pillow and
+            # save a real JPEG for Kivy and the database.
+            converted = self.image_manager.copy_and_resize(
+                raw_path,
+                max_size=1600,
+                quality=92
+            )
+
+            if not converted:
+                print("GALLERY: IMAGE CONVERSION FAILED")
+                return
+
+            try:
+                os.remove(raw_path)
+            except Exception:
+                pass
+
+            self.image_path = converted
+            self.set_preview(converted)
+            print("GALLERY IMAGE:", converted)
 
         except Exception as e:
             print("COPY GALLERY IMAGE ERROR:", repr(e))
@@ -431,14 +453,11 @@ class AddItemScreen(Screen):
     def set_preview(self, path):
         try:
             self.preview.source = ""
+            self.preview.texture = None
             self.preview.source = path
             self.preview.reload()
         except Exception as e:
             print("PREVIEW ERROR:", repr(e))
-
-    # =========================================================
-    # SAVE
-    # =========================================================
 
     def save_item(self, instance):
         app = App.get_running_app()
@@ -499,10 +518,6 @@ class AddItemScreen(Screen):
         except Exception as e:
             print("HOME REFRESH ERROR:", repr(e))
 
-    # =========================================================
-    # EDIT
-    # =========================================================
-
     def load_edit_item(self, item_id):
         self.edit_mode = True
         self.edit_id = item_id
@@ -537,10 +552,6 @@ class AddItemScreen(Screen):
             if cat[0] == category_id:
                 self.category_spinner.text = app.tr(cat[1].lower())
                 break
-
-    # =========================================================
-    # RESET / NAVIGATION
-    # =========================================================
 
     def clear_form(self):
         self.edit_mode = False
