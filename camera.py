@@ -7,28 +7,27 @@ from jnius import autoclass
 
 class Camera:
 
-    def __init__(
-        self,
-        request_code=200,
-        on_image=None
-    ):
+    def __init__(self, request_code=200, on_image=None):
         self.request_code = request_code
         self.on_image = on_image
         self.output_uri = None
         self.output_path = None
 
     def open(self, output_dir=None):
-        print("========================================")
         print("CAMERA: OPEN")
-        print("========================================")
 
         try:
+            from android.permissions import check_permission, Permission
+
+            if not check_permission(Permission.CAMERA):
+                print("CAMERA: PERMISSION NOT GRANTED")
+                return False
+
             Intent = autoclass("android.content.Intent")
             PythonActivity = autoclass("org.kivy.android.PythonActivity")
             activity = PythonActivity.mActivity
 
-            intent = Intent("android.media.action.IMAGE_CAPTURE")
-
+            intent = Intent(Intent.ACTION_IMAGE_CAPTURE)
             package_manager = activity.getPackageManager()
             resolve_info = intent.resolveActivity(package_manager)
 
@@ -41,25 +40,15 @@ class Camera:
                 print("CAMERA: APP IS NONE")
                 return False
 
-            image_dir = output_dir or os.path.join(
-                app.user_data_dir,
-                "images"
-            )
+            image_dir = output_dir or os.path.join(app.user_data_dir, "images")
             os.makedirs(image_dir, exist_ok=True)
 
-            filename = (
-                "camera_"
-                + str(int(time.time() * 1000))
-                + ".jpg"
-            )
-
+            filename = "camera_" + str(int(time.time() * 1000)) + ".jpg"
             path = os.path.join(image_dir, filename)
             self.output_path = path
 
             ContentValues = autoclass("android.content.ContentValues")
-            MediaStoreImages = autoclass(
-                "android.provider.MediaStore$Images$Media"
-            )
+            MediaStoreImages = autoclass("android.provider.MediaStore$Images$Media")
             Build = autoclass("android.os.Build")
             VERSION_CODES = autoclass("android.os.Build$VERSION_CODES")
 
@@ -90,9 +79,6 @@ class Camera:
                 "android.provider.MediaStore.EXTRA_OUTPUT",
                 uri
             )
-
-            # Some camera applications require an explicit grant and
-            # ClipData before they are allowed to write to a MediaStore URI.
             intent.addFlags(
                 Intent.FLAG_GRANT_WRITE_URI_PERMISSION
                 | Intent.FLAG_GRANT_READ_URI_PERMISSION
@@ -106,14 +92,8 @@ class Camera:
             except Exception as e:
                 print("CAMERA CLIPDATA WARNING:", repr(e))
 
-            # Explicitly grant the URI to every camera activity that can
-            # handle the intent. This fixes devices where the camera opens
-            # but cannot write to the supplied MediaStore URI.
             try:
-                activities = package_manager.queryIntentActivities(
-                    intent,
-                    0
-                )
+                activities = package_manager.queryIntentActivities(intent, 0)
                 for info in activities:
                     package_name = info.activityInfo.packageName
                     try:
@@ -132,27 +112,18 @@ class Camera:
             except Exception as e:
                 print("CAMERA QUERY ACTIVITIES WARNING:", repr(e))
 
-            print("CAMERA: STARTING")
-            activity.startActivityForResult(
-                intent,
-                self.request_code
-            )
+            print("CAMERA: STARTING NATIVE CAMERA")
+            activity.startActivityForResult(intent, self.request_code)
             print("CAMERA: STARTED")
             return True
 
         except Exception as e:
-            print("========================================")
             print("CAMERA OPEN ERROR:", repr(e))
-            print("========================================")
+            self.delete_output()
             return False
 
     def handle_result(self, request_code, result_code, intent):
-        print("========================================")
-        print("CAMERA: HANDLE RESULT")
-        print("REQUEST:", request_code)
-        print("RESULT:", result_code)
-        print("URI:", self.output_uri)
-        print("========================================")
+        print("CAMERA: HANDLE RESULT", request_code, result_code)
 
         if request_code != self.request_code:
             return
@@ -180,12 +151,7 @@ class Camera:
                 ContentValues = autoclass("android.content.ContentValues")
                 values = ContentValues()
                 values.put("is_pending", 0)
-                resolver.update(
-                    self.output_uri,
-                    values,
-                    None,
-                    None
-                )
+                resolver.update(self.output_uri, values, None, None)
 
             input_stream = resolver.openInputStream(self.output_uri)
             if input_stream is None:
@@ -197,11 +163,7 @@ class Camera:
             image_dir = os.path.join(app.user_data_dir, "images")
             os.makedirs(image_dir, exist_ok=True)
 
-            filename = (
-                "camera_local_"
-                + str(int(time.time() * 1000))
-                + ".jpg"
-            )
+            filename = "camera_local_" + str(int(time.time() * 1000)) + ".jpg"
             local_path = os.path.join(image_dir, filename)
 
             FileOutputStream = autoclass("java.io.FileOutputStream")
@@ -240,19 +202,13 @@ class Camera:
                 return
 
             self.output_path = local_path
-
-            print("========================================")
-            print("CAMERA: SUCCESS")
-            print("CAMERA: FINAL LOCAL PATH:", local_path)
-            print("========================================")
+            print("CAMERA: SUCCESS:", local_path)
 
             if self.on_image:
                 self.on_image(local_path)
 
         except Exception as e:
-            print("========================================")
             print("CAMERA HANDLE ERROR:", repr(e))
-            print("========================================")
 
     def delete_output(self):
         try:
@@ -263,12 +219,7 @@ class Camera:
             activity = PythonActivity.mActivity
             resolver = activity.getContentResolver()
 
-            resolver.delete(
-                self.output_uri,
-                None,
-                None
-            )
-
+            resolver.delete(self.output_uri, None, None)
             print("CAMERA: OUTPUT DELETED")
 
         except Exception as e:
