@@ -15,6 +15,10 @@ jobs:
 
     env:
       ACCEPT_ANDROID_SDK_LICENSE: "yes"
+      # Avoid the intermittent Savannah 502 for the FreeType recipe.
+      # python-for-android uses this directory instead of downloading its
+      # normal FreeType archive when P4A_FREETYPE_DIR is set.
+      P4A_FREETYPE_DIR: /tmp/freetype-2.14.1
 
     steps:
 
@@ -38,6 +42,31 @@ jobs:
       run: |
         chmod -R 777 .
 
+    - name: Prepare FreeType source
+      run: |
+        set -e
+        rm -rf /tmp/freetype-2.14.1
+        mkdir -p /tmp/freetype-2.14.1
+
+        download_freetype() {
+          curl -fL --retry 8 --retry-all-errors --retry-delay 3 \
+            -o /tmp/freetype.tar.gz "$1"
+        }
+
+        if ! download_freetype \
+          "https://download-mirror.savannah.gnu.org/releases/freetype/freetype-2.14.1.tar.gz"; then
+          echo "Savannah mirror failed, trying SourceForge..."
+          download_freetype \
+            "https://sourceforge.net/projects/freetype/files/freetype2/2.14.1/freetype-2.14.1.tar.gz/download"
+        fi
+
+        tar -xzf /tmp/freetype.tar.gz \
+          --strip-components=1 \
+          -C /tmp/freetype-2.14.1
+
+        test -f /tmp/freetype-2.14.1/configure
+        echo "FreeType source prepared successfully."
+
     - name: Clean build
       run: |
         rm -rf .buildozer
@@ -49,6 +78,7 @@ jobs:
         ACCEPT_ANDROID_SDK_LICENSE: "yes"
         PYTHONFORANDROID_PREREQUISITES_INSTALL_INTERACTIVE: "0"
         SETUPTOOLS_USE_DISTUTILS: "local"
+        P4A_FREETYPE_DIR: /tmp/freetype-2.14.1
       run: |
         yes | buildozer android debug
 
