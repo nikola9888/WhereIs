@@ -279,21 +279,40 @@ class AddItemScreen(Screen):
 
     def open_camera(self):
         try:
-            from android.permissions import request_permissions, Permission
+            from android.permissions import (
+                request_permissions,
+                check_permission,
+                Permission
+            )
 
-            def permission_callback(permissions, grants):
-                print("CAMERA PERMISSION RESULT:", permissions, grants)
-                if all(grants):
-                    Clock.schedule_once(
-                        lambda dt: self.camera.open(),
-                        0.1
-                    )
-                else:
-                    print("CAMERA PERMISSION DENIED")
+            def launch_camera(*args):
+                def attempt_open(dt):
+                    try:
+                        if check_permission(Permission.CAMERA):
+                            print("CAMERA: PERMISSION CONFIRMED")
+                            self.camera.open()
+                        else:
+                            print("CAMERA: PERMISSION STILL NOT GRANTED")
+                    except Exception as e:
+                        print("CAMERA LAUNCH AFTER PERMISSION ERROR:", repr(e))
 
+                Clock.schedule_once(attempt_open, 0.5)
+
+            # Important: if permission was already granted, do not request it
+            # again. Launch the camera directly. This avoids Android returning
+            # from the permission flow without starting the camera intent.
+            if check_permission(Permission.CAMERA):
+                print("CAMERA: PERMISSION ALREADY GRANTED")
+                Clock.schedule_once(
+                    lambda dt: self.camera.open(),
+                    0.1
+                )
+                return
+
+            print("CAMERA: REQUESTING PERMISSION")
             request_permissions(
                 [Permission.CAMERA],
-                permission_callback
+                launch_camera
             )
 
         except Exception as e:
