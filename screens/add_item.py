@@ -285,26 +285,29 @@ class AddItemScreen(Screen):
                 Permission
             )
 
-            def launch_camera(*args):
-                def attempt_open(dt):
-                    try:
-                        if check_permission(Permission.CAMERA):
-                            print("CAMERA: PERMISSION CONFIRMED")
-                            self.camera.open()
-                        else:
-                            print("CAMERA: PERMISSION STILL NOT GRANTED")
-                    except Exception as e:
-                        print("CAMERA LAUNCH AFTER PERMISSION ERROR:", repr(e))
+            def launch_camera(permissions, results):
+                print("CAMERA: PERMISSION CALLBACK")
+                print("CAMERA: PERMISSIONS:", permissions)
+                print("CAMERA: RESULTS:", results)
 
-                Clock.schedule_once(attempt_open, 0.5)
+                granted = bool(results) and all(results)
 
-            # Important: if permission was already granted, do not request it
-            # again. Launch the camera directly. This avoids Android returning
-            # from the permission flow without starting the camera intent.
+                if not granted:
+                    print("CAMERA: PERMISSION DENIED")
+                    return
+
+                # Permission callbacks come from Android. Schedule the actual
+                # camera intent on the Kivy UI thread after Android has
+                # finished the permission transition.
+                Clock.schedule_once(
+                    lambda dt: self._launch_camera_after_permission(),
+                    0.15
+                )
+
             if check_permission(Permission.CAMERA):
                 print("CAMERA: PERMISSION ALREADY GRANTED")
                 Clock.schedule_once(
-                    lambda dt: self.camera.open(),
+                    lambda dt: self._launch_camera_after_permission(),
                     0.1
                 )
                 return
@@ -317,10 +320,23 @@ class AddItemScreen(Screen):
 
         except Exception as e:
             print("CAMERA PERMISSION ERROR:", repr(e))
-            try:
-                self.camera.open()
-            except Exception as camera_error:
-                print("OPEN CAMERA ERROR:", repr(camera_error))
+
+    def _launch_camera_after_permission(self):
+        try:
+            from android.permissions import check_permission, Permission
+
+            if not check_permission(Permission.CAMERA):
+                print("CAMERA: PERMISSION CHECK FAILED AFTER CALLBACK")
+                return
+
+            print("CAMERA: LAUNCHING AFTER PERMISSION")
+
+            started = self.camera.open()
+
+            print("CAMERA: OPEN RETURNED:", started)
+
+        except Exception as e:
+            print("CAMERA LAUNCH ERROR:", repr(e))
 
     def on_camera_image(self, path):
         if not path or not os.path.isfile(path):
