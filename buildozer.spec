@@ -33,8 +33,9 @@ android.enable_androidx = True
 android.private_storage = True
 android.allow_backup = True
 
-# Required for the native Android camera intent.
-android.permissions = CAMERA
+# Native Android camera intent.
+android.permissions = android.permission.CAMERA
+android.features = android.hardware.camera
 
 [buildozer]
 log_level = 2
