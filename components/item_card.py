@@ -36,7 +36,12 @@ class ItemCard(ButtonBehavior, BoxLayout):
 
         self.orientation = "vertical"
         self.size_hint_y = None
-        self.height = dp(190)
+
+        # The card contains a 150dp image row plus an optional description.
+        # A fixed 190dp height was too small once a description was present,
+        # so Kivy's vertical BoxLayout could compress/reposition the row and
+        # make the image appear to jump upward. Keep enough room for both.
+        self.height = dp(235) if self.description else dp(190)
         self.padding = dp(16)
         self.spacing = dp(10)
 
@@ -68,7 +73,9 @@ class ItemCard(ButtonBehavior, BoxLayout):
 
         row = BoxLayout(
             orientation="horizontal",
-            spacing=dp(15)
+            spacing=dp(15),
+            size_hint_y=None,
+            height=dp(150)
         )
 
         if self.image_path and os.path.isfile(self.image_path):
