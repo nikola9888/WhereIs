@@ -10,7 +10,6 @@ class Camera:
     def __init__(self, request_code=200, on_image=None):
         self.request_code = request_code
         self.on_image = on_image
-        self.output_uri = None
         self.output_path = None
 
     def open(self, output_dir=None):
@@ -20,14 +19,19 @@ class Camera:
             from android.permissions import check_permission, Permission
 
             if not check_permission(Permission.CAMERA):
-                print("CAMERA: PERMISSION NOT GRANTED")
+                print("CAMERA: PERMISSION NOT GRANTED YET")
                 return False
 
             Intent = autoclass("android.content.Intent")
             PythonActivity = autoclass("org.kivy.android.PythonActivity")
             activity = PythonActivity.mActivity
 
+            # Use the standard camera intent without EXTRA_OUTPUT for the
+            # initial capture. This avoids MediaStore/URI permission problems
+            # that can prevent some Android camera apps from opening at all.
             intent = Intent(Intent.ACTION_IMAGE_CAPTURE)
+            intent.putExtra("return-data", True)
+
             package_manager = activity.getPackageManager()
             resolve_info = intent.resolveActivity(package_manager)
 
@@ -40,86 +44,28 @@ class Camera:
                 print("CAMERA: APP IS NONE")
                 return False
 
-            image_dir = output_dir or os.path.join(app.user_data_dir, "images")
+            image_dir = output_dir or os.path.join(
+                app.user_data_dir,
+                "images"
+            )
             os.makedirs(image_dir, exist_ok=True)
 
-            filename = "camera_" + str(int(time.time() * 1000)) + ".jpg"
-            path = os.path.join(image_dir, filename)
-            self.output_path = path
-
-            ContentValues = autoclass("android.content.ContentValues")
-            MediaStoreImages = autoclass("android.provider.MediaStore$Images$Media")
-            Build = autoclass("android.os.Build")
-            VERSION_CODES = autoclass("android.os.Build$VERSION_CODES")
-
-            values = ContentValues()
-            values.put("display_name", filename)
-            values.put("mime_type", "image/jpeg")
-
-            if Build.VERSION.SDK_INT >= VERSION_CODES.Q:
-                values.put("relative_path", "Pictures/WhereIs")
-                values.put("is_pending", 1)
-
-            resolver = activity.getContentResolver()
-            uri = resolver.insert(
-                MediaStoreImages.EXTERNAL_CONTENT_URI,
-                values
+            self.output_path = os.path.join(
+                image_dir,
+                "camera_" + str(int(time.time() * 1000)) + ".jpg"
             )
-
-            if uri is None:
-                print("CAMERA: MEDIASTORE INSERT FAILED")
-                self.output_uri = None
-                self.output_path = None
-                return False
-
-            self.output_uri = uri
-            print("CAMERA: OUTPUT URI:", uri)
-
-            intent.putExtra(
-                "android.provider.MediaStore.EXTRA_OUTPUT",
-                uri
-            )
-            intent.addFlags(
-                Intent.FLAG_GRANT_WRITE_URI_PERMISSION
-                | Intent.FLAG_GRANT_READ_URI_PERMISSION
-            )
-
-            try:
-                ClipData = autoclass("android.content.ClipData")
-                intent.setClipData(
-                    ClipData.newRawUri("WhereIsCamera", uri)
-                )
-            except Exception as e:
-                print("CAMERA CLIPDATA WARNING:", repr(e))
-
-            try:
-                activities = package_manager.queryIntentActivities(intent, 0)
-                for info in activities:
-                    package_name = info.activityInfo.packageName
-                    try:
-                        activity.grantUriPermission(
-                            package_name,
-                            uri,
-                            Intent.FLAG_GRANT_WRITE_URI_PERMISSION
-                            | Intent.FLAG_GRANT_READ_URI_PERMISSION
-                        )
-                    except Exception as grant_error:
-                        print(
-                            "CAMERA URI GRANT WARNING:",
-                            package_name,
-                            repr(grant_error)
-                        )
-            except Exception as e:
-                print("CAMERA QUERY ACTIVITIES WARNING:", repr(e))
 
             print("CAMERA: STARTING NATIVE CAMERA")
-            activity.startActivityForResult(intent, self.request_code)
+            activity.startActivityForResult(
+                intent,
+                self.request_code
+            )
             print("CAMERA: STARTED")
             return True
 
         except Exception as e:
             print("CAMERA OPEN ERROR:", repr(e))
-            self.delete_output()
+            self.output_path = None
             return False
 
     def handle_result(self, request_code, result_code, intent):
@@ -133,60 +79,61 @@ class Camera:
 
             if result_code != Activity.RESULT_OK:
                 print("CAMERA: USER CANCELLED")
-                self.delete_output()
+                self.output_path = None
                 return
 
-            if self.output_uri is None:
-                print("CAMERA: OUTPUT URI NONE")
+            if intent is None:
+                print("CAMERA: RESULT INTENT NONE")
                 return
 
-            PythonActivity = autoclass("org.kivy.android.PythonActivity")
-            activity = PythonActivity.mActivity
-            resolver = activity.getContentResolver()
+            extras = intent.getExtras()
+            if extras is None:
+                print("CAMERA: RESULT EXTRAS NONE")
+                return
 
-            Build = autoclass("android.os.Build")
-            VERSION_CODES = autoclass("android.os.Build$VERSION_CODES")
-
-            if Build.VERSION.SDK_INT >= VERSION_CODES.Q:
-                ContentValues = autoclass("android.content.ContentValues")
-                values = ContentValues()
-                values.put("is_pending", 0)
-                resolver.update(self.output_uri, values, None, None)
-
-            input_stream = resolver.openInputStream(self.output_uri)
-            if input_stream is None:
-                print("CAMERA: INPUT STREAM NONE")
-                self.delete_output()
+            bitmap = extras.get("data")
+            if bitmap is None:
+                print("CAMERA: RESULT BITMAP NONE")
                 return
 
             app = App.get_running_app()
+            if app is None:
+                return
+
             image_dir = os.path.join(app.user_data_dir, "images")
             os.makedirs(image_dir, exist_ok=True)
 
-            filename = "camera_local_" + str(int(time.time() * 1000)) + ".jpg"
-            local_path = os.path.join(image_dir, filename)
+            local_path = os.path.join(
+                image_dir,
+                "camera_local_" + str(int(time.time() * 1000)) + ".jpg"
+            )
 
             FileOutputStream = autoclass("java.io.FileOutputStream")
+            CompressFormat = autoclass("android.graphics.Bitmap$CompressFormat")
+
             output_stream = FileOutputStream(local_path)
 
             try:
-                buffer = bytearray(64 * 1024)
-                while True:
-                    count = input_stream.read(buffer)
-                    if count <= 0:
-                        break
-                    output_stream.write(buffer, 0, count)
+                success = bitmap.compress(
+                    CompressFormat.JPEG,
+                    95,
+                    output_stream
+                )
             finally:
-                try:
-                    input_stream.close()
-                except Exception:
-                    pass
                 try:
                     output_stream.close()
                 except Exception:
                     pass
 
-            if not os.path.exists(local_path):
+            if not success:
+                print("CAMERA: BITMAP COMPRESS FAILED")
+                try:
+                    os.remove(local_path)
+                except Exception:
+                    pass
+                return
+
+            if not os.path.isfile(local_path):
                 print("CAMERA: LOCAL FILE NOT CREATED")
                 return
 
@@ -211,20 +158,12 @@ class Camera:
             print("CAMERA HANDLE ERROR:", repr(e))
 
     def delete_output(self):
-        try:
-            if self.output_uri is None:
-                return
+        if self.output_path:
+            try:
+                if os.path.isfile(self.output_path):
+                    os.remove(self.output_path)
+                    print("CAMERA: LOCAL OUTPUT DELETED")
+            except Exception as e:
+                print("CAMERA DELETE ERROR:", repr(e))
 
-            PythonActivity = autoclass("org.kivy.android.PythonActivity")
-            activity = PythonActivity.mActivity
-            resolver = activity.getContentResolver()
-
-            resolver.delete(self.output_uri, None, None)
-            print("CAMERA: OUTPUT DELETED")
-
-        except Exception as e:
-            print("CAMERA DELETE ERROR:", repr(e))
-
-        finally:
-            self.output_uri = None
-            self.output_path = None
+        self.output_path = None
