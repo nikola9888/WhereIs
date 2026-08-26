@@ -77,21 +77,65 @@ jobs:
           text = spec.read_text(encoding="utf-8")
           setting = "p4a.local_recipes = %(source.dir)s/python-for-android/recipes/"
 
-          if "p4a.local_recipes" not in text:
-              marker = "\n[buildozer]"
-              if marker not in text:
-                  raise SystemExit("[buildozer] section was not found in buildozer.spec")
-              text = text.replace(marker, "\n" + setting + marker, 1)
-              spec.write_text(text, encoding="utf-8")
-              print("Added p4a.local_recipes to buildozer.spec")
-          else:
-              print("p4a.local_recipes is already configured.")
+          # Buildozer reads p4a.local_recipes from the [app] section.
+          # The previous workflow incorrectly inserted it into [buildozer],
+          # so Buildozer silently ignored the local FreeType recipe.
+          lines = text.splitlines()
+          app_start = None
+          next_section = None
+
+          for i, line in enumerate(lines):
+              stripped = line.strip()
+              if stripped.lower() == "[app]":
+                  app_start = i
+                  continue
+              if app_start is not None and i > app_start and stripped.startswith("[") and stripped.endswith("]"):
+                  next_section = i
+                  break
+
+          if app_start is None:
+              raise SystemExit("[app] section was not found in buildozer.spec")
+
+          end = next_section if next_section is not None else len(lines)
+          app_block = lines[app_start:end]
+
+          # Remove any previous p4a.local_recipes entry, wherever it is in [app].
+          app_block = [line for line in app_block if not line.strip().startswith("p4a.local_recipes")]
+
+          # Insert it at the end of [app], before the next section.
+          app_block.append(setting)
+          lines = lines[:app_start] + app_block + lines[end:]
+
+          # Remove an accidental p4a.local_recipes entry from [buildozer] if a previous
+          # workflow version ever added one to the working copy.
+          buildozer_start = None
+          next_buildozer_section = None
+          for i, line in enumerate(lines):
+              stripped = line.strip()
+              if stripped.lower() == "[buildozer]":
+                  buildozer_start = i
+                  continue
+              if buildozer_start is not None and i > buildozer_start and stripped.startswith("[") and stripped.endswith("]"):
+                  next_buildozer_section = i
+                  break
+
+          if buildozer_start is not None:
+              end_b = next_buildozer_section if next_buildozer_section is not None else len(lines)
+              lines = [
+                  line for i, line in enumerate(lines)
+                  if not (buildozer_start < i < end_b and line.strip().startswith("p4a.local_recipes"))
+              ]
+
+          spec.write_text("\n".join(lines) + "\n", encoding="utf-8")
+          print("p4a.local_recipes configured in [app]")
           PY
 
           echo "=== Local FreeType recipe ==="
           grep -n "version\|url =\|savannah" python-for-android/recipes/freetype/__init__.py
-          echo "=== p4a.local_recipes ==="
+          echo "=== p4a.local_recipes in buildozer.spec ==="
           grep -n "p4a.local_recipes" buildozer.spec
+          echo "=== buildozer.spec section check ==="
+          awk '/^\[app\]/{p=1} /^\[buildozer\]/{p=0} p && /p4a.local_recipes/{print "OK: p4a.local_recipes is inside [app]"}' buildozer.spec
 
       - name: Build WhereIs APK
         env:
