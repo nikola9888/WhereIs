@@ -38,6 +38,7 @@ jobs:
           chmod -R 777 .
           rm -rf .buildozer
           rm -rf bin
+          rm -rf python-for-android
           mkdir -p bin
 
       - name: Prepare local FreeType recipe
@@ -47,6 +48,7 @@ jobs:
 
           python3 - <<'PY'
           from pathlib import Path
+          import re
           import urllib.request
 
           url = "https://raw.githubusercontent.com/kivy/python-for-android/master/pythonforandroid/recipes/freetype/__init__.py"
@@ -59,83 +61,39 @@ jobs:
           with urllib.request.urlopen(request, timeout=60) as response:
               text = response.read().decode("utf-8")
 
-          old = "https://download.savannah.gnu.org/releases/freetype/freetype-{version}.tar.gz"
-          new = "https://download-mirror.savannah.gnu.org/releases/freetype/freetype-{version}.tar.gz"
+          # Patch the actual recipe URL generically. The upstream recipe uses
+          # a {version} placeholder, so never look for a hard-coded 2.14.1 URL.
+          pattern = r"https://download\.savannah\.gnu\.org/releases/freetype/freetype-\{version\}\.tar\.gz"
+          replacement = "https://download-mirror.savannah.gnu.org/releases/freetype/freetype-{version}.tar.gz"
+          patched, count = re.subn(pattern, replacement, text, count=1)
 
-          if old not in text:
-              raise SystemExit("Could not find the expected FreeType URL in the upstream recipe.")
+          if count != 1:
+              raise SystemExit(
+                  "Could not patch the upstream FreeType recipe URL. "
+                  "Expected the recipe to contain the {version} Savannah URL."
+              )
 
-          text = text.replace(old, new)
-          target.write_text(text, encoding="utf-8")
-          print("Local FreeType recipe prepared with download-mirror.savannah.gnu.org")
+          target.write_text(patched, encoding="utf-8")
+          print("FreeType local recipe created successfully.")
           PY
 
-          python3 - <<'PY'
-          from pathlib import Path
+          test -f python-for-android/recipes/freetype/__init__.py
+          grep -n "url =\|savannah" python-for-android/recipes/freetype/__init__.py
 
-          spec = Path("buildozer.spec")
-          text = spec.read_text(encoding="utf-8")
-          setting = "p4a.local_recipes = %(source.dir)s/python-for-android/recipes/"
-
-          # Buildozer reads p4a.local_recipes from the [app] section.
-          # The previous workflow incorrectly inserted it into [buildozer],
-          # so Buildozer silently ignored the local FreeType recipe.
-          lines = text.splitlines()
-          app_start = None
-          next_section = None
-
-          for i, line in enumerate(lines):
-              stripped = line.strip()
-              if stripped.lower() == "[app]":
-                  app_start = i
-                  continue
-              if app_start is not None and i > app_start and stripped.startswith("[") and stripped.endswith("]"):
-                  next_section = i
-                  break
-
-          if app_start is None:
-              raise SystemExit("[app] section was not found in buildozer.spec")
-
-          end = next_section if next_section is not None else len(lines)
-          app_block = lines[app_start:end]
-
-          # Remove any previous p4a.local_recipes entry, wherever it is in [app].
-          app_block = [line for line in app_block if not line.strip().startswith("p4a.local_recipes")]
-
-          # Insert it at the end of [app], before the next section.
-          app_block.append(setting)
-          lines = lines[:app_start] + app_block + lines[end:]
-
-          # Remove an accidental p4a.local_recipes entry from [buildozer] if a previous
-          # workflow version ever added one to the working copy.
-          buildozer_start = None
-          next_buildozer_section = None
-          for i, line in enumerate(lines):
-              stripped = line.strip()
-              if stripped.lower() == "[buildozer]":
-                  buildozer_start = i
-                  continue
-              if buildozer_start is not None and i > buildozer_start and stripped.startswith("[") and stripped.endswith("]"):
-                  next_buildozer_section = i
-                  break
-
-          if buildozer_start is not None:
-              end_b = next_buildozer_section if next_buildozer_section is not None else len(lines)
-              lines = [
-                  line for i, line in enumerate(lines)
-                  if not (buildozer_start < i < end_b and line.strip().startswith("p4a.local_recipes"))
-              ]
-
-          spec.write_text("\n".join(lines) + "\n", encoding="utf-8")
-          print("p4a.local_recipes configured in [app]")
-          PY
-
-          echo "=== Local FreeType recipe ==="
-          grep -n "version\|url =\|savannah" python-for-android/recipes/freetype/__init__.py
-          echo "=== p4a.local_recipes in buildozer.spec ==="
+          echo "=== Verify buildozer.spec local recipe setting ==="
           grep -n "p4a.local_recipes" buildozer.spec
-          echo "=== buildozer.spec section check ==="
-          awk '/^\[app\]/{p=1} /^\[buildozer\]/{p=0} p && /p4a.local_recipes/{print "OK: p4a.local_recipes is inside [app]"}' buildozer.spec
+          awk '
+            /^\[app\]/{in_app=1}
+            /^\[buildozer\]/{in_app=0}
+            in_app && /p4a.local_recipes/{found=1}
+            END {
+              if (!found) {
+                print "ERROR: p4a.local_recipes is not inside [app]"
+                exit 1
+              }
+              print "OK: p4a.local_recipes is inside [app]"
+            }
+          ' buildozer.spec
 
       - name: Build WhereIs APK
         env:
@@ -143,6 +101,7 @@ jobs:
           PYTHONFORANDROID_PREREQUISITES_INSTALL_INTERACTIVE: "0"
           SETUPTOOLS_USE_DISTUTILS: "local"
         run: |
+          set -e
           yes | buildozer android debug
 
       - name: Check APK
