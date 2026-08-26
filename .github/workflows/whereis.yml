@@ -41,33 +41,40 @@ jobs:
           rm -rf python-for-android
           mkdir -p bin
 
-      - name: Verify FreeType mirror
+      - name: Prepare patched python-for-android
         run: |
           set -e
-          echo "=== FreeType mirror check ==="
-          python3 - <<'PY'
-          import urllib.request
+          git clone --depth 1 --branch master https://github.com/kivy/python-for-android.git python-for-android
+          test -f python-for-android/pythonforandroid/recipes/freetype/__init__.py
 
-          url = "https://download-mirror.savannah.gnu.org/releases/freetype/freetype-2.14.1.tar.gz"
-          request = urllib.request.Request(
-              url,
-              method="HEAD",
-              headers={"User-Agent": "WhereIs-Build/1.0"},
-          )
-          with urllib.request.urlopen(request, timeout=60) as response:
-              print("FreeType mirror HTTP status:", response.status)
+          python3 - <<'PY'
+          from pathlib import Path
+
+          recipe = Path("python-for-android/pythonforandroid/recipes/freetype/__init__.py")
+          text = recipe.read_text()
+
+          old = "https://download.savannah.gnu.org/releases/freetype/freetype-{version}.tar.gz"
+          new = "https://mirror.netcologne.de/savannah/freetype/freetype-{version}.tar.gz"
+
+          if old not in text:
+              raise SystemExit("FreeType recipe URL was not found; refusing to patch the wrong file.")
+
+          recipe.write_text(text.replace(old, new, 1))
+          print("Patched FreeType recipe URL to:", new)
           PY
+
+          grep -n "url =" python-for-android/pythonforandroid/recipes/freetype/__init__.py
 
       - name: Build WhereIs APK
         env:
           ACCEPT_ANDROID_SDK_LICENSE: "yes"
           PYTHONFORANDROID_PREREQUISITES_INSTALL_INTERACTIVE: "0"
           SETUPTOOLS_USE_DISTUTILS: "local"
-          URL_FREETYPE: "https://download-mirror.savannah.gnu.org/releases/freetype/freetype-{version}.tar.gz"
         run: |
           set -e
-          echo "=== Using FreeType mirror through p4a URL_FREETYPE override ==="
-          echo "$URL_FREETYPE"
+          echo "=== Building with local patched python-for-android ==="
+          echo "=== FreeType recipe ==="
+          grep -n "url =" python-for-android/pythonforandroid/recipes/freetype/__init__.py
           yes | buildozer android debug
 
       - name: Check APK
