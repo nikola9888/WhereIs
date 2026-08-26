@@ -40,40 +40,58 @@ jobs:
           rm -rf bin
           mkdir -p bin
 
-      - name: Initialize Buildozer
-        run: |
-          buildozer android update
-
-      - name: Patch p4a FreeType recipe
+      - name: Prepare local FreeType recipe
         run: |
           set -e
-          RECIPE=".buildozer/android/platform/python-for-android/pythonforandroid/recipes/freetype/__init__.py"
-          test -f "$RECIPE"
-          echo "=== FreeType recipe before patch ==="
-          grep -n "freetype-2.14.1\|savannah" "$RECIPE" || true
+          mkdir -p python-for-android/recipes/freetype
 
-          python3 - "$RECIPE" <<'PY'
+          python3 - <<'PY'
           from pathlib import Path
-          import sys
+          import urllib.request
 
-          recipe = Path(sys.argv[1])
-          text = recipe.read_text()
+          url = "https://raw.githubusercontent.com/kivy/python-for-android/master/pythonforandroid/recipes/freetype/__init__.py"
+          target = Path("python-for-android/recipes/freetype/__init__.py")
 
-          old = "https://download.savannah.gnu.org/releases/freetype/freetype-2.14.1.tar.gz"
-          new = "https://download-mirror.savannah.gnu.org/releases/freetype/freetype-2.14.1.tar.gz"
+          request = urllib.request.Request(
+              url,
+              headers={"User-Agent": "WhereIs-Build/1.0"},
+          )
+          with urllib.request.urlopen(request, timeout=60) as response:
+              text = response.read().decode("utf-8")
 
-          if old in text:
-              text = text.replace(old, new)
-              recipe.write_text(text)
-              print("FreeType URL patched to download-mirror.savannah.gnu.org")
-          elif new in text:
-              print("FreeType URL is already patched.")
-          else:
-              raise SystemExit("Expected FreeType 2.14.1 URL was not found in the p4a recipe.")
+          old = "https://download.savannah.gnu.org/releases/freetype/freetype-{version}.tar.gz"
+          new = "https://download-mirror.savannah.gnu.org/releases/freetype/freetype-{version}.tar.gz"
+
+          if old not in text:
+              raise SystemExit("Could not find the expected FreeType URL in the upstream recipe.")
+
+          text = text.replace(old, new)
+          target.write_text(text, encoding="utf-8")
+          print("Local FreeType recipe prepared with download-mirror.savannah.gnu.org")
           PY
 
-          echo "=== FreeType recipe after patch ==="
-          grep -n "freetype-2.14.1\|savannah" "$RECIPE" || true
+          python3 - <<'PY'
+          from pathlib import Path
+
+          spec = Path("buildozer.spec")
+          text = spec.read_text(encoding="utf-8")
+          setting = "p4a.local_recipes = %(source.dir)s/python-for-android/recipes/"
+
+          if "p4a.local_recipes" not in text:
+              marker = "\n[buildozer]"
+              if marker not in text:
+                  raise SystemExit("[buildozer] section was not found in buildozer.spec")
+              text = text.replace(marker, "\n" + setting + marker, 1)
+              spec.write_text(text, encoding="utf-8")
+              print("Added p4a.local_recipes to buildozer.spec")
+          else:
+              print("p4a.local_recipes is already configured.")
+          PY
+
+          echo "=== Local FreeType recipe ==="
+          grep -n "version\|url =\|savannah" python-for-android/recipes/freetype/__init__.py
+          echo "=== p4a.local_recipes ==="
+          grep -n "p4a.local_recipes" buildozer.spec
 
       - name: Build WhereIs APK
         env:
