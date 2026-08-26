@@ -15,6 +15,7 @@ requirements = python3==3.10.11,hostpython3==3.10.11,kivy,pyjnius,pillow
 
 p4a.branch = master
 p4a.python_version = 3.10
+p4a.source_dir = python-for-android
 
 orientation = portrait
 fullscreen = 1
