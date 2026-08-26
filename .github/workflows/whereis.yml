@@ -41,67 +41,33 @@ jobs:
           rm -rf python-for-android
           mkdir -p bin
 
-      - name: Prepare local FreeType recipe
+      - name: Verify FreeType mirror
         run: |
           set -e
-          mkdir -p python-for-android/recipes/freetype
-
+          echo "=== FreeType mirror check ==="
           python3 - <<'PY'
-          from pathlib import Path
-          import re
           import urllib.request
 
-          url = "https://raw.githubusercontent.com/kivy/python-for-android/master/pythonforandroid/recipes/freetype/__init__.py"
-          target = Path("python-for-android/recipes/freetype/__init__.py")
-
+          url = "https://download-mirror.savannah.gnu.org/releases/freetype/freetype-2.14.1.tar.gz"
           request = urllib.request.Request(
               url,
+              method="HEAD",
               headers={"User-Agent": "WhereIs-Build/1.0"},
           )
           with urllib.request.urlopen(request, timeout=60) as response:
-              text = response.read().decode("utf-8")
-
-          # Patch the actual recipe URL generically. The upstream recipe uses
-          # a {version} placeholder, so never look for a hard-coded 2.14.1 URL.
-          pattern = r"https://download\.savannah\.gnu\.org/releases/freetype/freetype-\{version\}\.tar\.gz"
-          replacement = "https://download-mirror.savannah.gnu.org/releases/freetype/freetype-{version}.tar.gz"
-          patched, count = re.subn(pattern, replacement, text, count=1)
-
-          if count != 1:
-              raise SystemExit(
-                  "Could not patch the upstream FreeType recipe URL. "
-                  "Expected the recipe to contain the {version} Savannah URL."
-              )
-
-          target.write_text(patched, encoding="utf-8")
-          print("FreeType local recipe created successfully.")
+              print("FreeType mirror HTTP status:", response.status)
           PY
-
-          test -f python-for-android/recipes/freetype/__init__.py
-          grep -n "url =\|savannah" python-for-android/recipes/freetype/__init__.py
-
-          echo "=== Verify buildozer.spec local recipe setting ==="
-          grep -n "p4a.local_recipes" buildozer.spec
-          awk '
-            /^\[app\]/{in_app=1}
-            /^\[buildozer\]/{in_app=0}
-            in_app && /p4a.local_recipes/{found=1}
-            END {
-              if (!found) {
-                print "ERROR: p4a.local_recipes is not inside [app]"
-                exit 1
-              }
-              print "OK: p4a.local_recipes is inside [app]"
-            }
-          ' buildozer.spec
 
       - name: Build WhereIs APK
         env:
           ACCEPT_ANDROID_SDK_LICENSE: "yes"
           PYTHONFORANDROID_PREREQUISITES_INSTALL_INTERACTIVE: "0"
           SETUPTOOLS_USE_DISTUTILS: "local"
+          URL_FREETYPE: "https://download-mirror.savannah.gnu.org/releases/freetype/freetype-{version}.tar.gz"
         run: |
           set -e
+          echo "=== Using FreeType mirror through p4a URL_FREETYPE override ==="
+          echo "$URL_FREETYPE"
           yes | buildozer android debug
 
       - name: Check APK
