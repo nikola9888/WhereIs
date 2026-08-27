@@ -20,7 +20,8 @@ p4a.source_dir = python-for-android
 orientation = portrait
 fullscreen = 1
 
-icon.filename = assets/Icon.png
+# No app icon configured here because assets/Icon.png is a directory
+# containing the application's UI icons, not a single PNG file.
 
 # Android / Google Play
 android.api = 35
