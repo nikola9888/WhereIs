@@ -20,7 +20,7 @@ p4a.source_dir = python-for-android
 orientation = portrait
 fullscreen = 1
 
-icon.filename = assets/Icon.png/home.png
+icon.filename = assets/Icon.png
 
 # Android / Google Play
 android.api = 35
