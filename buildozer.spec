@@ -13,7 +13,9 @@ android.numeric_version = 100001
 
 requirements = python3==3.10.11,hostpython3==3.10.11,kivy,pyjnius,pillow
 
-p4a.branch = master
+# Use the current python-for-android development branch required for
+# current Android Store submissions / API 36.
+p4a.branch = develop
 p4a.python_version = 3.10
 p4a.source_dir = python-for-android
 
@@ -24,13 +26,12 @@ fullscreen = 1
 # containing the application's UI icons, not a single PNG file.
 
 # Android / Google Play
-android.api = 35
+android.api = 36
 android.minapi = 24
-android.build_tools_version = 35.0.0
 android.accept_sdk_license = True
-android.ndk = 25c
+android.ndk = 28c
 android.archs = arm64-v8a
-android.debug_artifact = apk
+android.release_artifact = aab
 android.enable_androidx = True
 android.private_storage = True
 android.allow_backup = True
