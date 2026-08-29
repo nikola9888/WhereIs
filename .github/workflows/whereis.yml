@@ -1,4 +1,4 @@
-name: WhereIs Android Build
+name: WhereIs Android Release AAB
 
 on:
   workflow_dispatch:
@@ -20,31 +20,36 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Install tools
+      - name: Install current Buildozer toolchain
         run: |
-          pip install --upgrade pip
-          pip install buildozer==1.6.0
-          pip install Cython==0.29.37
-          pip install sh
+          set -e
+          python3 -m pip install --upgrade pip
+          python3 -m pip install --no-cache-dir \
+            git+https://github.com/kivy/buildozer.git \
+            legacy-cgi \
+            setuptools \
+            cython==0.29.34
 
-      - name: Check files
+      - name: Check project files
         run: |
+          set -e
           ls -la
           test -f buildozer.spec
-          test -f requirements.txt || true
+          test -f main.py
 
-      - name: Prepare build
+      - name: Prepare clean build
         run: |
+          set -e
           chmod -R 777 .
           rm -rf .buildozer
           rm -rf bin
           rm -rf python-for-android
           mkdir -p bin
 
-      - name: Prepare patched python-for-android
+      - name: Prepare patched python-for-android develop
         run: |
           set -e
-          git clone --depth 1 --branch master https://github.com/kivy/python-for-android.git python-for-android
+          git clone --depth 1 --branch develop https://github.com/kivy/python-for-android.git python-for-android
           test -f python-for-android/pythonforandroid/recipes/freetype/__init__.py
 
           python3 - <<'PY'
@@ -56,37 +61,39 @@ jobs:
           old = "https://download.savannah.gnu.org/releases/freetype/freetype-{version}.tar.gz"
           new = "https://mirror.netcologne.de/savannah/freetype/freetype-{version}.tar.gz"
 
-          if old not in text:
-              raise SystemExit("FreeType recipe URL was not found; refusing to patch the wrong file.")
-
-          recipe.write_text(text.replace(old, new, 1))
-          print("Patched FreeType recipe URL to:", new)
+          if old in text:
+              recipe.write_text(text.replace(old, new, 1))
+              print("Patched FreeType recipe URL to:", new)
+          else:
+              print("FreeType URL already changed or recipe format has changed; continuing.")
           PY
 
-          grep -n "url =" python-for-android/pythonforandroid/recipes/freetype/__init__.py
+          grep -n "url =" python-for-android/pythonforandroid/recipes/freetype/__init__.py || true
 
-      - name: Build WhereIs APK
+      - name: Build signed/releasable AAB
         env:
           ACCEPT_ANDROID_SDK_LICENSE: "yes"
           PYTHONFORANDROID_PREREQUISITES_INSTALL_INTERACTIVE: "0"
           SETUPTOOLS_USE_DISTUTILS: "local"
         run: |
           set -e
-          echo "=== Building with local patched python-for-android ==="
-          echo "=== FreeType recipe ==="
-          grep -n "url =" python-for-android/pythonforandroid/recipes/freetype/__init__.py
-          yes | buildozer android debug
+          echo "=== Build configuration ==="
+          grep -E '^(android\.api|android\.minapi|android\.ndk|android\.release_artifact|p4a\.branch|p4a\.python_version)' buildozer.spec
+          echo "=== Building Android release AAB ==="
+          yes | buildozer -v android release
 
-      - name: Check APK
+      - name: Check AAB
         run: |
-          echo "=== APK FILES ==="
+          set -e
+          echo "=== AAB FILES ==="
           ls -lah bin/
-          echo "=== APK SHA256 ==="
-          sha256sum bin/*.apk
+          test -n "$(find bin -maxdepth 1 -type f -name '*.aab' -print -quit)"
+          echo "=== AAB SHA256 ==="
+          sha256sum bin/*.aab
 
-      - name: Upload WhereIs APK
+      - name: Upload WhereIs release AAB
         uses: actions/upload-artifact@v4
         with:
-          name: WhereIs-debug-apk
-          path: bin/*.apk
+          name: WhereIs-release-aab
+          path: bin/*.aab
           if-no-files-found: error
