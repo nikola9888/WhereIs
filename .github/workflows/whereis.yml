@@ -1,4 +1,4 @@
-name: WhereIs Android Release AAB
+name: WhereIs Android Release APK
 
 on:
   workflow_dispatch:
@@ -70,7 +70,7 @@ jobs:
 
           grep -n "url =" python-for-android/pythonforandroid/recipes/freetype/__init__.py || true
 
-      - name: Build signed/releasable AAB
+      - name: Build signed/releasable APK
         env:
           ACCEPT_ANDROID_SDK_LICENSE: "yes"
           PYTHONFORANDROID_PREREQUISITES_INSTALL_INTERACTIVE: "0"
@@ -79,21 +79,24 @@ jobs:
           set -e
           echo "=== Build configuration ==="
           grep -E '^(android\.api|android\.minapi|android\.ndk|android\.release_artifact|p4a\.branch|p4a\.python_version)' buildozer.spec
-          echo "=== Building Android release AAB ==="
+          echo "=== Building Android release APK ==="
           yes | buildozer -v android release
 
-      - name: Check AAB
+      - name: Check APK
         run: |
           set -e
-          echo "=== AAB FILES ==="
+          echo "=== APK FILES ==="
           ls -lah bin/
-          test -n "$(find bin -maxdepth 1 -type f -name '*.aab' -print -quit)"
-          echo "=== AAB SHA256 ==="
-          sha256sum bin/*.aab
+          APK_FILE="$(find bin -maxdepth 1 -type f -name '*.apk' -print -quit)"
+          test -n "$APK_FILE"
+          echo "=== APK SHA256 ==="
+          sha256sum "$APK_FILE"
+          echo "=== APK SIZE ==="
+          du -h "$APK_FILE"
 
-      - name: Upload WhereIs release AAB
+      - name: Upload WhereIs release APK
         uses: actions/upload-artifact@v4
         with:
-          name: WhereIs-release-aab
-          path: bin/*.aab
+          name: WhereIs-release-apk
+          path: bin/*.apk
           if-no-files-found: error
