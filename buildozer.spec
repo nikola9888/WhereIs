@@ -36,9 +36,9 @@ android.enable_androidx = True
 android.private_storage = True
 android.allow_backup = True
 
-# Native Android camera intent.
+# Camera permission. Do not use android.features here: the current
+# python-for-android toolchain rejects --feature.
 android.permissions = android.permission.CAMERA
-android.features = android.hardware.camera
 
 [buildozer]
 log_level = 2
