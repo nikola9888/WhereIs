@@ -89,10 +89,8 @@ class Camera:
                     pass
                 return False
 
-            # Some Android camera apps do not honour the URI grant from the
-            # Intent alone. Explicitly grant the selected camera package
-            # access to the MediaStore URI before launching it.
             camera_package = resolve_info.activityInfo.packageName
+
             try:
                 activity.grantUriPermission(
                     camera_package,
@@ -123,10 +121,7 @@ class Camera:
         except Exception as e:
             print("CAMERA OPEN ERROR:", repr(e))
             self._delete_output_uri()
-            self.output_path = None
-            self.output_uri = None
-            self.output_pending = False
-            self.camera_package = None
+            self._clear_state()
             return False
 
     def handle_result(self, request_code, result_code, intent):
@@ -137,6 +132,7 @@ class Camera:
 
         try:
             Activity = autoclass("android.app.Activity")
+            Intent = autoclass("android.content.Intent")
 
             if result_code != Activity.RESULT_OK:
                 print("CAMERA: USER CANCELLED")
@@ -186,7 +182,6 @@ class Camera:
                         break
                     output_stream.write(buffer, 0, count)
                     total += count
-
             finally:
                 try:
                     stream.close()
@@ -232,21 +227,24 @@ class Camera:
             self.output_path = local_path
             print("CAMERA: SUCCESS:", local_path)
 
-            self._delete_output_uri()
-            self.output_uri = None
-            self.output_pending = False
+            # Save the URI/package before cleanup so the grant can be revoked.
+            saved_uri = self.output_uri
+            saved_package = self.camera_package
 
-            if self.camera_package:
+            if saved_package:
                 try:
                     activity.revokeUriPermission(
-                        self.camera_package,
-                        self.output_uri,
+                        saved_package,
+                        saved_uri,
                         Intent.FLAG_GRANT_READ_URI_PERMISSION
                         | Intent.FLAG_GRANT_WRITE_URI_PERMISSION
                     )
-                except Exception:
-                    pass
+                except Exception as e:
+                    print("CAMERA: REVOKE URI GRANT ERROR:", repr(e))
 
+            self._delete_output_uri()
+            self.output_uri = None
+            self.output_pending = False
             self.camera_package = None
 
             if self.on_image:
