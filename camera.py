@@ -14,6 +14,7 @@ class Camera:
         self.output_path = None
         self.output_uri = None
         self.output_pending = False
+        self.camera_package = None
 
     def open(self, output_dir=None):
         print("CAMERA: OPEN")
@@ -54,9 +55,6 @@ class Camera:
                 + ".jpg"
             )
 
-            # Use MediaStore as the camera output URI. This avoids the
-            # Android 7+ file:// restrictions and avoids relying on the
-            # camera app returning a small thumbnail in Intent extras.
             values = ContentValues()
             values.put("display_name", filename)
             values.put("mime_type", "image/jpeg")
@@ -78,11 +76,7 @@ class Camera:
             intent.putExtra(Intent.EXTRA_OUTPUT, uri)
             intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
             intent.addFlags(Intent.FLAG_GRANT_WRITE_URI_PERMISSION)
-
-            # Some camera implementations only honour URI grants when the
-            # URI is also present in ClipData.
-            clip_data = ClipData.newRawUri("WhereIs", uri)
-            intent.setClipData(clip_data)
+            intent.setClipData(ClipData.newRawUri("WhereIs", uri))
 
             package_manager = activity.getPackageManager()
             resolve_info = intent.resolveActivity(package_manager)
@@ -94,6 +88,22 @@ class Camera:
                 except Exception:
                     pass
                 return False
+
+            # Some Android camera apps do not honour the URI grant from the
+            # Intent alone. Explicitly grant the selected camera package
+            # access to the MediaStore URI before launching it.
+            camera_package = resolve_info.activityInfo.packageName
+            try:
+                activity.grantUriPermission(
+                    camera_package,
+                    uri,
+                    Intent.FLAG_GRANT_READ_URI_PERMISSION
+                    | Intent.FLAG_GRANT_WRITE_URI_PERMISSION
+                )
+                self.camera_package = camera_package
+                print("CAMERA: URI GRANTED TO:", camera_package)
+            except Exception as e:
+                print("CAMERA: EXPLICIT URI GRANT FAILED:", repr(e))
 
             self.output_uri = uri
             self.output_path = None
@@ -116,6 +126,7 @@ class Camera:
             self.output_path = None
             self.output_uri = None
             self.output_pending = False
+            self.camera_package = None
             return False
 
     def handle_result(self, request_code, result_code, intent):
@@ -130,9 +141,7 @@ class Camera:
             if result_code != Activity.RESULT_OK:
                 print("CAMERA: USER CANCELLED")
                 self._delete_output_uri()
-                self.output_path = None
-                self.output_uri = None
-                self.output_pending = False
+                self._clear_state()
                 return
 
             if self.output_uri is None:
@@ -151,9 +160,7 @@ class Camera:
                 "camera_local_" + str(int(time.time() * 1000)) + ".jpg"
             )
 
-            PythonActivity = autoclass(
-                "org.kivy.android.PythonActivity"
-            )
+            PythonActivity = autoclass("org.kivy.android.PythonActivity")
             FileOutputStream = autoclass("java.io.FileOutputStream")
             BuildVersion = autoclass("android.os.Build$VERSION")
 
@@ -164,6 +171,7 @@ class Camera:
             if stream is None:
                 print("CAMERA: OUTPUT INPUT STREAM NONE")
                 self._delete_output_uri()
+                self._clear_state()
                 return
 
             output_stream = FileOutputStream(local_path)
@@ -176,7 +184,6 @@ class Camera:
                     count = stream.read(buffer)
                     if count <= 0:
                         break
-
                     output_stream.write(buffer, 0, count)
                     total += count
 
@@ -185,14 +192,11 @@ class Camera:
                     stream.close()
                 except Exception:
                     pass
-
                 try:
                     output_stream.close()
                 except Exception:
                     pass
 
-            # Publish the MediaStore item after the camera has finished
-            # writing. IS_PENDING is available from Android 10 / API 29.
             if BuildVersion.SDK_INT >= 29 and self.output_pending:
                 ContentValues = autoclass("android.content.ContentValues")
                 values = ContentValues()
@@ -209,6 +213,7 @@ class Camera:
             if not os.path.isfile(local_path):
                 print("CAMERA: LOCAL FILE NOT CREATED")
                 self._delete_output_uri()
+                self._clear_state()
                 return
 
             size = os.path.getsize(local_path)
@@ -221,16 +226,28 @@ class Camera:
                 except Exception:
                     pass
                 self._delete_output_uri()
+                self._clear_state()
                 return
 
             self.output_path = local_path
             print("CAMERA: SUCCESS:", local_path)
 
-            # The MediaStore copy is only a transport location. WhereIs uses
-            # its private app storage for the actual item image.
             self._delete_output_uri()
             self.output_uri = None
             self.output_pending = False
+
+            if self.camera_package:
+                try:
+                    activity.revokeUriPermission(
+                        self.camera_package,
+                        self.output_uri,
+                        Intent.FLAG_GRANT_READ_URI_PERMISSION
+                        | Intent.FLAG_GRANT_WRITE_URI_PERMISSION
+                    )
+                except Exception:
+                    pass
+
+            self.camera_package = None
 
             if self.on_image:
                 Clock.schedule_once(
@@ -241,6 +258,13 @@ class Camera:
         except Exception as e:
             print("CAMERA HANDLE ERROR:", repr(e))
             self._delete_output_uri()
+            self._clear_state()
+
+    def _clear_state(self):
+        self.output_path = None
+        self.output_uri = None
+        self.output_pending = False
+        self.camera_package = None
 
     def _delete_output_uri(self):
         if self.output_uri is None:
@@ -267,6 +291,4 @@ class Camera:
                 print("CAMERA DELETE ERROR:", repr(e))
 
         self._delete_output_uri()
-        self.output_path = None
-        self.output_uri = None
-        self.output_pending = False
+        self._clear_state()
