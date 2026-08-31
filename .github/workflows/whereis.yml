@@ -83,8 +83,11 @@ jobs:
           yes | buildozer -v android release
 
       - name: Sign APK
+        env:
+          ACCEPT_ANDROID_SDK_LICENSE: "yes"
         run: |
           set -e
+
           APK_FILE="$(find bin -maxdepth 1 -type f -name '*-release-unsigned.apk' -print -quit)"
           if [ -z "$APK_FILE" ]; then
             APK_FILE="$(find bin -maxdepth 1 -type f -name '*.apk' -print -quit)"
@@ -94,38 +97,52 @@ jobs:
           KEYSTORE="$RUNNER_TEMP/whereis-release.keystore"
           KEY_ALIAS="whereis"
           STORE_PASSWORD="whereis-release-store"
-          KEY_PASSWORD="whereis-release-key"
 
           echo "=== Generating signing keystore ==="
           keytool -genkeypair \
             -v \
             -keystore "$KEYSTORE" \
             -storepass "$STORE_PASSWORD" \
-            -keypass "$KEY_PASSWORD" \
             -alias "$KEY_ALIAS" \
             -keyalg RSA \
             -keysize 2048 \
             -validity 10000 \
-            -dname "CN=WhereIs, OU=WhereIs, O=Develop4World, L=Pančevo, ST=Serbia, C=RS"
+            -dname "CN=WhereIs, OU=WhereIs, O=Develop4World, L=Pancevo, ST=Serbia, C=RS"
 
-          SDK_BUILD_TOOLS="$(find "$ANDROID_HOME/build-tools" -mindepth 1 -maxdepth 1 -type d | sort -V | tail -n 1)"
-          APKSIGNER="$SDK_BUILD_TOOLS/apksigner"
-          test -x "$APKSIGNER"
+          echo "=== Locating apksigner ==="
+          APKSIGNER="$(find /opt /root /github/home /usr/local -type f -name apksigner 2>/dev/null | sort -V | tail -n 1)"
+
+          if [ -z "$APKSIGNER" ]; then
+            APKSIGNER="$(find / -type f -name apksigner 2>/dev/null | sort -V | tail -n 1)"
+          fi
+
+          if [ -z "$APKSIGNER" ]; then
+            echo "ERROR: apksigner was not found in the container"
+            echo "=== Android SDK locations ==="
+            find /opt /root /github/home -maxdepth 6 -type f -name apksigner -o -type d -name build-tools 2>/dev/null | head -100
+            exit 1
+          fi
+
+          echo "Using apksigner: $APKSIGNER"
+          chmod +x "$APKSIGNER"
 
           SIGNED_APK="${APK_FILE%-unsigned.apk}-release.apk"
+
+          echo "=== Signing APK ==="
           "$APKSIGNER" sign \
             --ks "$KEYSTORE" \
             --ks-key-alias "$KEY_ALIAS" \
             --ks-pass "pass:$STORE_PASSWORD" \
-            --key-pass "pass:$KEY_PASSWORD" \
             --out "$SIGNED_APK" \
             "$APK_FILE"
 
+          echo "=== Verifying APK signature ==="
           "$APKSIGNER" verify --verbose "$SIGNED_APK"
+
           rm -f "$APK_FILE"
           mv "$SIGNED_APK" "bin/whereis-1.0.0-arm64-v8a-release.apk"
 
-          echo "=== SIGNED APK ==="
+          echo "=== FINAL SIGNED APK ==="
           ls -lah bin/*.apk
 
       - name: Check APK
