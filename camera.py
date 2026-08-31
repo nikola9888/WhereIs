@@ -20,10 +20,9 @@ class Camera:
         print("CAMERA: OPEN")
 
         try:
-            # Do not check CAMERA permission here.
-            # Android's permission callback can arrive before check_permission()
-            # has updated its cached state. The caller already handles the
-            # permission request; this method only launches the native camera.
+            # The caller handles the Android CAMERA permission request.
+            # Do not check it again here because Android may not have updated
+            # check_permission() immediately after the permission callback.
             Intent = autoclass("android.content.Intent")
             ClipData = autoclass("android.content.ClipData")
             ContentValues = autoclass("android.content.ContentValues")
@@ -274,7 +273,7 @@ class Camera:
             resolver.delete(self.output_uri, None, None)
             print("CAMERA: OUTPUT URI DELETED")
         except Exception as e:
-            print("CAMERA URI DELETE ERROR:", repr(e)
+            print("CAMERA URI DELETE ERROR:", repr(e))
 
     def delete_output(self):
         if self.output_path:
@@ -283,7 +282,7 @@ class Camera:
                     os.remove(self.output_path)
                     print("CAMERA: LOCAL OUTPUT DELETED")
             except Exception as e:
-                print("CAMERA DELETE ERROR:", repr(e)
+                print("CAMERA DELETE ERROR:", repr(e))
 
         self._delete_output_uri()
         self._clear_state()
