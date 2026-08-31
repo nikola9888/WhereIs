@@ -296,19 +296,20 @@ class AddItemScreen(Screen):
                     print("CAMERA: PERMISSION DENIED")
                     return
 
-                # Permission callbacks come from Android. Schedule the actual
-                # camera intent on the Kivy UI thread after Android has
-                # finished the permission transition.
+                # Do not call check_permission() here. Android can invoke the
+                # callback before the permission state is visible to the
+                # python-for-android check_permission() helper. The callback
+                # result itself is the authoritative grant result.
                 Clock.schedule_once(
                     lambda dt: self._launch_camera_after_permission(),
-                    0.15
+                    0.35
                 )
 
             if check_permission(Permission.CAMERA):
                 print("CAMERA: PERMISSION ALREADY GRANTED")
                 Clock.schedule_once(
                     lambda dt: self._launch_camera_after_permission(),
-                    0.1
+                    0.15
                 )
                 return
 
@@ -323,17 +324,17 @@ class AddItemScreen(Screen):
 
     def _launch_camera_after_permission(self):
         try:
-            from android.permissions import check_permission, Permission
-
-            if not check_permission(Permission.CAMERA):
-                print("CAMERA: PERMISSION CHECK FAILED AFTER CALLBACK")
-                return
-
-            print("CAMERA: LAUNCHING AFTER PERMISSION")
+            # The permission callback already confirmed the grant. Do not
+            # perform another check here because it can still report False
+            # during Android's permission-state transition.
+            print("CAMERA: LAUNCHING NATIVE CAMERA")
 
             started = self.camera.open()
 
             print("CAMERA: OPEN RETURNED:", started)
+
+            if not started:
+                print("CAMERA: NATIVE CAMERA DID NOT START")
 
         except Exception as e:
             print("CAMERA LAUNCH ERROR:", repr(e))
