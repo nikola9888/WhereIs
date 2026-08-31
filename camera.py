@@ -20,12 +20,10 @@ class Camera:
         print("CAMERA: OPEN")
 
         try:
-            from android.permissions import check_permission, Permission
-
-            if not check_permission(Permission.CAMERA):
-                print("CAMERA: PERMISSION NOT GRANTED")
-                return False
-
+            # Do not check CAMERA permission here.
+            # Android's permission callback can arrive before check_permission()
+            # has updated its cached state. The caller already handles the
+            # permission request; this method only launches the native camera.
             Intent = autoclass("android.content.Intent")
             ClipData = autoclass("android.content.ClipData")
             ContentValues = autoclass("android.content.ContentValues")
@@ -227,7 +225,6 @@ class Camera:
             self.output_path = local_path
             print("CAMERA: SUCCESS:", local_path)
 
-            # Save the URI/package before cleanup so the grant can be revoked.
             saved_uri = self.output_uri
             saved_package = self.camera_package
 
@@ -277,7 +274,7 @@ class Camera:
             resolver.delete(self.output_uri, None, None)
             print("CAMERA: OUTPUT URI DELETED")
         except Exception as e:
-            print("CAMERA URI DELETE ERROR:", repr(e))
+            print("CAMERA URI DELETE ERROR:", repr(e)
 
     def delete_output(self):
         if self.output_path:
@@ -286,7 +283,7 @@ class Camera:
                     os.remove(self.output_path)
                     print("CAMERA: LOCAL OUTPUT DELETED")
             except Exception as e:
-                print("CAMERA DELETE ERROR:", repr(e))
+                print("CAMERA DELETE ERROR:", repr(e)
 
         self._delete_output_uri()
         self._clear_state()
