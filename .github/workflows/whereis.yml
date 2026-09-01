@@ -82,6 +82,81 @@ jobs:
           echo "=== Building Android release APK ==="
           yes | buildozer -v android release
 
+      - name: Sign release APK
+        env:
+          ACCEPT_ANDROID_SDK_LICENSE: "yes"
+        run: |
+          set -e
+
+          echo "=== Finding unsigned release APK ==="
+          APK_FILE="$(find bin -maxdepth 1 -type f -name '*-release-unsigned.apk' -print -quit)"
+          test -n "$APK_FILE"
+          echo "Unsigned APK: $APK_FILE"
+
+          echo "=== Locating Android SDK ==="
+          SDK_ROOT=""
+          for candidate in "${ANDROID_HOME:-}" "${ANDROID_SDK_ROOT:-}" "/root/.buildozer/android/platform/android-sdk" "/home/.buildozer/android/platform/android-sdk"; do
+            if [ -n "$candidate" ] && [ -d "$candidate/build-tools" ]; then
+              SDK_ROOT="$candidate"
+              break
+            fi
+          done
+
+          if [ -z "$SDK_ROOT" ]; then
+            SDK_ROOT="$(find /root /home /opt -type d -path '*/build-tools' 2>/dev/null | sed 's#/build-tools$##' | head -n 1 || true)"
+          fi
+
+          if [ -z "$SDK_ROOT" ] || [ ! -d "$SDK_ROOT/build-tools" ]; then
+            echo "ERROR: Android SDK build-tools directory was not found"
+            echo "=== Searching for apksigner ==="
+            find /root /home /opt -type f -name apksigner 2>/dev/null | head -50 || true
+            exit 1
+          fi
+
+          echo "Android SDK: $SDK_ROOT"
+          echo "Build-tools versions:"
+          find "$SDK_ROOT/build-tools" -mindepth 1 -maxdepth 1 -type d -printf '%f\n' | sort -V
+
+          APKSIGNER="$(find "$SDK_ROOT/build-tools" -type f -name apksigner -print | sort -V | tail -n 1)"
+          test -n "$APKSIGNER"
+          echo "Using apksigner: $APKSIGNER"
+          chmod +x "$APKSIGNER"
+
+          KEYSTORE="$RUNNER_TEMP/whereis-release.keystore"
+          KEY_ALIAS="whereis"
+          STORE_PASSWORD="whereis-release-store"
+
+          echo "=== Generating temporary release keystore ==="
+          keytool -genkeypair \
+            -v \
+            -keystore "$KEYSTORE" \
+            -storetype PKCS12 \
+            -storepass "$STORE_PASSWORD" \
+            -keypass "$STORE_PASSWORD" \
+            -alias "$KEY_ALIAS" \
+            -keyalg RSA \
+            -keysize 2048 \
+            -validity 10000 \
+            -dname "CN=WhereIs, OU=WhereIs, O=Develop4World, L=Pancevo, ST=Serbia, C=RS"
+
+          SIGNED_APK="${APK_FILE%-unsigned.apk}.apk"
+
+          echo "=== Signing APK ==="
+          "$APKSIGNER" sign \
+            --ks "$KEYSTORE" \
+            --ks-key-alias "$KEY_ALIAS" \
+            --ks-pass "pass:$STORE_PASSWORD" \
+            --out "$SIGNED_APK" \
+            "$APK_FILE"
+
+          echo "=== Verifying APK signature ==="
+          "$APKSIGNER" verify --verbose "$SIGNED_APK"
+
+          echo "=== Final signed APK ==="
+          rm -f "$APK_FILE"
+          mv "$SIGNED_APK" "bin/whereis-1.0.0-arm64-v8a-release.apk"
+          ls -lah bin/*.apk
+
       - name: Check APK
         run: |
           set -e
