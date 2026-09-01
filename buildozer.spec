@@ -36,9 +36,9 @@ android.enable_androidx = True
 android.private_storage = True
 android.allow_backup = True
 
-# Camera permission. Do not use android.features here: the current
-# python-for-android toolchain rejects --feature.
-android.permissions = android.permission.CAMERA
+# Camera is opened through the Android system ACTION_IMAGE_CAPTURE intent.
+# Do not declare android.permission.CAMERA: Android recommends using the
+# external camera app without this permission for this use case.
 
 [buildozer]
 log_level = 2
