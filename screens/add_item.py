@@ -279,65 +279,15 @@ class AddItemScreen(Screen):
 
     def open_camera(self):
         try:
-            from android.permissions import (
-                request_permissions,
-                check_permission,
-                Permission
-            )
-
-            def launch_camera(permissions, results):
-                print("CAMERA: PERMISSION CALLBACK")
-                print("CAMERA: PERMISSIONS:", permissions)
-                print("CAMERA: RESULTS:", results)
-
-                granted = bool(results) and all(results)
-
-                if not granted:
-                    print("CAMERA: PERMISSION DENIED")
-                    return
-
-                # Do not call check_permission() here. Android can invoke the
-                # callback before the permission state is visible to the
-                # python-for-android check_permission() helper. The callback
-                # result itself is the authoritative grant result.
-                Clock.schedule_once(
-                    lambda dt: self._launch_camera_after_permission(),
-                    0.35
-                )
-
-            if check_permission(Permission.CAMERA):
-                print("CAMERA: PERMISSION ALREADY GRANTED")
-                Clock.schedule_once(
-                    lambda dt: self._launch_camera_after_permission(),
-                    0.15
-                )
-                return
-
-            print("CAMERA: REQUESTING PERMISSION")
-            request_permissions(
-                [Permission.CAMERA],
-                launch_camera
-            )
-
-        except Exception as e:
-            print("CAMERA PERMISSION ERROR:", repr(e))
-
-    def _launch_camera_after_permission(self):
-        try:
-            # The permission callback already confirmed the grant. Do not
-            # perform another check here because it can still report False
-            # during Android's permission-state transition.
-            print("CAMERA: LAUNCHING NATIVE CAMERA")
-
+            print("CAMERA: DIRECT OPEN")
             started = self.camera.open()
-
             print("CAMERA: OPEN RETURNED:", started)
 
             if not started:
                 print("CAMERA: NATIVE CAMERA DID NOT START")
 
         except Exception as e:
-            print("CAMERA LAUNCH ERROR:", repr(e))
+            print("CAMERA DIRECT OPEN ERROR:", repr(e))
 
     def on_camera_image(self, path):
         if not path or not os.path.isfile(path):
@@ -527,8 +477,6 @@ class AddItemScreen(Screen):
         except Exception:
             pass
 
-        # First load on the next Kivy frame, then repeat after the file and
-        # Android/Kivy texture pipeline have had time to settle.
         Clock.schedule_once(reload_preview, 0.05)
         Clock.schedule_once(reload_preview, 0.25)
         Clock.schedule_once(reload_preview, 0.60)
