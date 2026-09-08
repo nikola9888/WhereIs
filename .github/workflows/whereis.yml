@@ -93,32 +93,36 @@ jobs:
           test -n "$APK_FILE"
           echo "Unsigned APK: $APK_FILE"
 
-          echo "=== Locating Android SDK ==="
-          SDK_ROOT=""
-          for candidate in "${ANDROID_HOME:-}" "${ANDROID_SDK_ROOT:-}" "/root/.buildozer/android/platform/android-sdk" "/home/.buildozer/android/platform/android-sdk"; do
-            if [ -n "$candidate" ] && [ -d "$candidate/build-tools" ]; then
-              SDK_ROOT="$candidate"
-              break
+          echo "=== Locating Android SDK / apksigner ==="
+          APKSIGNER=""
+
+          # Buildozer normally installs the SDK inside the project directory.
+          for candidate in \
+            "$PWD/.buildozer/android/platform/android-sdk/build-tools" \
+            "$GITHUB_WORKSPACE/.buildozer/android/platform/android-sdk/build-tools" \
+            "/root/.buildozer/android/platform/android-sdk/build-tools" \
+            "/home/.buildozer/android/platform/android-sdk/build-tools"; do
+            if [ -d "$candidate" ]; then
+              APKSIGNER="$(find "$candidate" -type f -name apksigner -print 2>/dev/null | sort -V | tail -n 1 || true)"
+              if [ -n "$APKSIGNER" ]; then
+                break
+              fi
             fi
           done
 
-          if [ -z "$SDK_ROOT" ]; then
-            SDK_ROOT="$(find /root /home /opt -type d -path '*/build-tools' 2>/dev/null | sed 's#/build-tools$##' | head -n 1 || true)"
+          # Final fallback: search the whole container. This avoids assuming
+          # a fixed SDK location inside the Kivy Buildozer container.
+          if [ -z "$APKSIGNER" ]; then
+            APKSIGNER="$(find / -type f -name apksigner -print 2>/dev/null | sort -V | tail -n 1 || true)"
           fi
 
-          if [ -z "$SDK_ROOT" ] || [ ! -d "$SDK_ROOT/build-tools" ]; then
-            echo "ERROR: Android SDK build-tools directory was not found"
-            echo "=== Searching for apksigner ==="
-            find /root /home /opt -type f -name apksigner 2>/dev/null | head -50 || true
+          if [ -z "$APKSIGNER" ]; then
+            echo "ERROR: apksigner was not found anywhere in the container"
+            echo "=== Possible Android SDK directories ==="
+            find / -type d -name build-tools -print 2>/dev/null | head -100 || true
             exit 1
           fi
 
-          echo "Android SDK: $SDK_ROOT"
-          echo "Build-tools versions:"
-          find "$SDK_ROOT/build-tools" -mindepth 1 -maxdepth 1 -type d -printf '%f\n' | sort -V
-
-          APKSIGNER="$(find "$SDK_ROOT/build-tools" -type f -name apksigner -print | sort -V | tail -n 1)"
-          test -n "$APKSIGNER"
           echo "Using apksigner: $APKSIGNER"
           chmod +x "$APKSIGNER"
 
