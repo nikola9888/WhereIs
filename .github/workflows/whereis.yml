@@ -93,38 +93,91 @@ jobs:
           test -n "$APK_FILE"
           echo "Unsigned APK: $APK_FILE"
 
-          echo "=== Locating Android SDK / apksigner ==="
-          APKSIGNER=""
+          echo "=== Locating Android SDK ==="
+          SDK_ROOT="${ANDROID_SDK_ROOT:-${ANDROID_HOME:-}}"
 
-          # Buildozer normally installs the SDK inside the project directory.
-          for candidate in \
-            "$PWD/.buildozer/android/platform/android-sdk/build-tools" \
-            "$GITHUB_WORKSPACE/.buildozer/android/platform/android-sdk/build-tools" \
-            "/root/.buildozer/android/platform/android-sdk/build-tools" \
-            "/home/.buildozer/android/platform/android-sdk/build-tools"; do
-            if [ -d "$candidate" ]; then
-              APKSIGNER="$(find "$candidate" -type f -name apksigner -print 2>/dev/null | sort -V | tail -n 1 || true)"
-              if [ -n "$APKSIGNER" ]; then
+          if [ -z "$SDK_ROOT" ] || [ ! -d "$SDK_ROOT" ]; then
+            for candidate in \
+              "$PWD/.buildozer/android/platform/android-sdk" \
+              "$GITHUB_WORKSPACE/.buildozer/android/platform/android-sdk" \
+              "/root/.buildozer/android/platform/android-sdk" \
+              "/home/.buildozer/android/platform/android-sdk" \
+              "/opt/android-sdk" \
+              "/opt/android-sdk-linux"; do
+              if [ -d "$candidate" ]; then
+                SDK_ROOT="$candidate"
                 break
               fi
-            fi
-          done
-
-          # Final fallback: search the whole container. This avoids assuming
-          # a fixed SDK location inside the Kivy Buildozer container.
-          if [ -z "$APKSIGNER" ]; then
-            APKSIGNER="$(find / -type f -name apksigner -print 2>/dev/null | sort -V | tail -n 1 || true)"
+            done
           fi
 
-          if [ -z "$APKSIGNER" ]; then
-            echo "ERROR: apksigner was not found anywhere in the container"
-            echo "=== Possible Android SDK directories ==="
+          if [ -z "$SDK_ROOT" ] || [ ! -d "$SDK_ROOT" ]; then
+            SDK_ROOT="$(find / -type d -name 'build-tools' -print 2>/dev/null | sed 's#/build-tools$##' | head -n 1 || true)"
+          fi
+
+          if [ -z "$SDK_ROOT" ] || [ ! -d "$SDK_ROOT" ]; then
+            echo "ERROR: Android SDK root could not be located"
             find / -type d -name build-tools -print 2>/dev/null | head -100 || true
             exit 1
           fi
 
+          echo "Android SDK root: $SDK_ROOT"
+
+          echo "=== Locating sdkmanager ==="
+          SDKMANAGER=""
+          for candidate in \
+            "$SDK_ROOT/cmdline-tools/latest/bin/sdkmanager" \
+            "$SDK_ROOT/cmdline-tools/bin/sdkmanager" \
+            "$SDK_ROOT/tools/bin/sdkmanager"; do
+            if [ -x "$candidate" ]; then
+              SDKMANAGER="$candidate"
+              break
+            fi
+          done
+
+          if [ -z "$SDKMANAGER" ]; then
+            SDKMANAGER="$(find "$SDK_ROOT" -type f -name sdkmanager -print 2>/dev/null | head -n 1 || true)"
+          fi
+
+          if [ -n "$SDKMANAGER" ]; then
+            echo "Using sdkmanager: $SDKMANAGER"
+            yes | "$SDKMANAGER" --licenses >/dev/null 2>&1 || true
+            "$SDKMANAGER" "platform-tools" "build-tools;35.0.0"
+          else
+            echo "sdkmanager not found; checking existing build-tools"
+          fi
+
+          echo "=== Locating build-tools ==="
+          BUILD_TOOLS="$(find "$SDK_ROOT/build-tools" -mindepth 1 -maxdepth 1 -type d -print 2>/dev/null | sort -V | tail -n 1 || true)"
+
+          if [ -z "$BUILD_TOOLS" ]; then
+            BUILD_TOOLS="$(find / -type d -path '*/build-tools/*' -print 2>/dev/null | sort -V | tail -n 1 || true)"
+          fi
+
+          if [ -z "$BUILD_TOOLS" ]; then
+            echo "ERROR: Android build-tools were not found"
+            find / -type d -name build-tools -print 2>/dev/null | head -100 || true
+            exit 1
+          fi
+
+          ZIPALIGN="$BUILD_TOOLS/zipalign"
+          APKSIGNER="$BUILD_TOOLS/apksigner"
+
+          if [ ! -x "$ZIPALIGN" ]; then
+            echo "ERROR: zipalign not found at $ZIPALIGN"
+            exit 1
+          fi
+
+          if [ ! -f "$APKSIGNER" ]; then
+            echo "ERROR: apksigner not found at $APKSIGNER"
+            find "$SDK_ROOT" -type f -name apksigner -print 2>/dev/null || true
+            exit 1
+          fi
+
+          chmod +x "$ZIPALIGN" "$APKSIGNER"
+          echo "Using build-tools: $BUILD_TOOLS"
+          echo "Using zipalign: $ZIPALIGN"
           echo "Using apksigner: $APKSIGNER"
-          chmod +x "$APKSIGNER"
 
           KEYSTORE="$RUNNER_TEMP/whereis-release.keystore"
           KEY_ALIAS="whereis"
@@ -136,28 +189,34 @@ jobs:
             -keystore "$KEYSTORE" \
             -storetype PKCS12 \
             -storepass "$STORE_PASSWORD" \
-            -keypass "$STORE_PASSWORD" \
             -alias "$KEY_ALIAS" \
             -keyalg RSA \
             -keysize 2048 \
             -validity 10000 \
             -dname "CN=WhereIs, OU=WhereIs, O=Develop4World, L=Pancevo, ST=Serbia, C=RS"
 
+          ALIGNED_APK="${APK_FILE%-unsigned.apk}-aligned.apk"
           SIGNED_APK="${APK_FILE%-unsigned.apk}.apk"
 
-          echo "=== Signing APK ==="
+          echo "=== Zipaligning APK ==="
+          "$ZIPALIGN" -f -p 4 "$APK_FILE" "$ALIGNED_APK"
+
+          echo "=== Signing APK with v1 + v2 + v3 ==="
           "$APKSIGNER" sign \
             --ks "$KEYSTORE" \
             --ks-key-alias "$KEY_ALIAS" \
             --ks-pass "pass:$STORE_PASSWORD" \
+            --v1-signing-enabled true \
+            --v2-signing-enabled true \
+            --v3-signing-enabled true \
             --out "$SIGNED_APK" \
-            "$APK_FILE"
+            "$ALIGNED_APK"
 
           echo "=== Verifying APK signature ==="
           "$APKSIGNER" verify --verbose "$SIGNED_APK"
 
           echo "=== Final signed APK ==="
-          rm -f "$APK_FILE"
+          rm -f "$APK_FILE" "$ALIGNED_APK"
           mv "$SIGNED_APK" "bin/whereis-1.0.0-arm64-v8a-release.apk"
           ls -lah bin/*.apk
 
