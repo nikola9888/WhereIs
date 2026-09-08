@@ -90,100 +90,69 @@ jobs:
 
           echo "=== Finding unsigned release APK ==="
           APK_FILE="$(find bin -maxdepth 1 -type f -name '*-release-unsigned.apk' -print -quit)"
+          if [ -z "$APK_FILE" ]; then
+            APK_FILE="$(find bin -maxdepth 1 -type f -name '*.apk' -print -quit)"
+          fi
           test -n "$APK_FILE"
           echo "Unsigned APK: $APK_FILE"
 
-          echo "=== Locating Android SDK ==="
-          SDK_ROOT="${ANDROID_SDK_ROOT:-${ANDROID_HOME:-}}"
+          echo "=== Locating Android signing tools ==="
+          APKSIGNER=""
+          ZIPALIGN=""
 
-          if [ -z "$SDK_ROOT" ] || [ ! -d "$SDK_ROOT" ]; then
-            for candidate in \
-              "$PWD/.buildozer/android/platform/android-sdk" \
-              "$GITHUB_WORKSPACE/.buildozer/android/platform/android-sdk" \
-              "/root/.buildozer/android/platform/android-sdk" \
-              "/home/.buildozer/android/platform/android-sdk" \
-              "/opt/android-sdk" \
-              "/opt/android-sdk-linux"; do
-              if [ -d "$candidate" ]; then
-                SDK_ROOT="$candidate"
-                break
+          # Buildozer normally installs Android SDK/build-tools inside .buildozer.
+          # Search for the actual executables instead of assuming a fixed SDK path.
+          for ROOT in \
+            "$PWD/.buildozer" \
+            "$GITHUB_WORKSPACE/.buildozer" \
+            "/root/.buildozer" \
+            "/opt" \
+            "/usr/local" \
+            "/android-sdk" \
+            "/opt/android-sdk"; do
+            if [ -d "$ROOT" ]; then
+              if [ -z "$APKSIGNER" ]; then
+                APKSIGNER="$(find "$ROOT" -type f -name apksigner -print 2>/dev/null | sort -V | tail -n 1 || true)"
               fi
-            done
-          fi
-
-          if [ -z "$SDK_ROOT" ] || [ ! -d "$SDK_ROOT" ]; then
-            SDK_ROOT="$(find / -type d -name 'build-tools' -print 2>/dev/null | sed 's#/build-tools$##' | head -n 1 || true)"
-          fi
-
-          if [ -z "$SDK_ROOT" ] || [ ! -d "$SDK_ROOT" ]; then
-            echo "ERROR: Android SDK root could not be located"
-            find / -type d -name build-tools -print 2>/dev/null | head -100 || true
-            exit 1
-          fi
-
-          echo "Android SDK root: $SDK_ROOT"
-
-          echo "=== Locating sdkmanager ==="
-          SDKMANAGER=""
-          for candidate in \
-            "$SDK_ROOT/cmdline-tools/latest/bin/sdkmanager" \
-            "$SDK_ROOT/cmdline-tools/bin/sdkmanager" \
-            "$SDK_ROOT/tools/bin/sdkmanager"; do
-            if [ -x "$candidate" ]; then
-              SDKMANAGER="$candidate"
+              if [ -z "$ZIPALIGN" ]; then
+                ZIPALIGN="$(find "$ROOT" -type f -name zipalign -print 2>/dev/null | sort -V | tail -n 1 || true)"
+              fi
+            fi
+            if [ -n "$APKSIGNER" ] && [ -n "$ZIPALIGN" ]; then
               break
             fi
           done
 
-          if [ -z "$SDKMANAGER" ]; then
-            SDKMANAGER="$(find "$SDK_ROOT" -type f -name sdkmanager -print 2>/dev/null | head -n 1 || true)"
+          # Final fallback: search the whole container.
+          if [ -z "$APKSIGNER" ]; then
+            APKSIGNER="$(find / -type f -name apksigner -print 2>/dev/null | sort -V | tail -n 1 || true)"
+          fi
+          if [ -z "$ZIPALIGN" ]; then
+            ZIPALIGN="$(find / -type f -name zipalign -print 2>/dev/null | sort -V | tail -n 1 || true)"
           fi
 
-          if [ -n "$SDKMANAGER" ]; then
-            echo "Using sdkmanager: $SDKMANAGER"
-            yes | "$SDKMANAGER" --licenses >/dev/null 2>&1 || true
-            "$SDKMANAGER" "platform-tools" "build-tools;35.0.0"
-          else
-            echo "sdkmanager not found; checking existing build-tools"
-          fi
-
-          echo "=== Locating build-tools ==="
-          BUILD_TOOLS="$(find "$SDK_ROOT/build-tools" -mindepth 1 -maxdepth 1 -type d -print 2>/dev/null | sort -V | tail -n 1 || true)"
-
-          if [ -z "$BUILD_TOOLS" ]; then
-            BUILD_TOOLS="$(find / -type d -path '*/build-tools/*' -print 2>/dev/null | sort -V | tail -n 1 || true)"
-          fi
-
-          if [ -z "$BUILD_TOOLS" ]; then
-            echo "ERROR: Android build-tools were not found"
-            find / -type d -name build-tools -print 2>/dev/null | head -100 || true
+          if [ -z "$APKSIGNER" ]; then
+            echo "ERROR: apksigner was not found anywhere in the container"
+            find / -type f -name apksigner -o -type d -name 'build-tools' 2>/dev/null | head -100 || true
             exit 1
           fi
 
-          ZIPALIGN="$BUILD_TOOLS/zipalign"
-          APKSIGNER="$BUILD_TOOLS/apksigner"
-
-          if [ ! -x "$ZIPALIGN" ]; then
-            echo "ERROR: zipalign not found at $ZIPALIGN"
+          if [ -z "$ZIPALIGN" ]; then
+            echo "ERROR: zipalign was not found anywhere in the container"
+            find / -type f -name zipalign -o -type d -name 'build-tools' 2>/dev/null | head -100 || true
             exit 1
           fi
 
-          if [ ! -f "$APKSIGNER" ]; then
-            echo "ERROR: apksigner not found at $APKSIGNER"
-            find "$SDK_ROOT" -type f -name apksigner -print 2>/dev/null || true
-            exit 1
-          fi
-
-          chmod +x "$ZIPALIGN" "$APKSIGNER"
-          echo "Using build-tools: $BUILD_TOOLS"
-          echo "Using zipalign: $ZIPALIGN"
+          chmod +x "$APKSIGNER" "$ZIPALIGN"
           echo "Using apksigner: $APKSIGNER"
+          echo "Using zipalign: $ZIPALIGN"
 
           KEYSTORE="$RUNNER_TEMP/whereis-release.keystore"
           KEY_ALIAS="whereis"
           STORE_PASSWORD="whereis-release-store"
 
           echo "=== Generating temporary release keystore ==="
+          rm -f "$KEYSTORE"
           keytool -genkeypair \
             -v \
             -keystore "$KEYSTORE" \
