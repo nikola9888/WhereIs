@@ -14,13 +14,7 @@ class Camera:
         self.output_path = None
 
     def open(self, output_dir=None):
-        """Open the Android system camera without requesting CAMERA permission.
-
-        The system camera app owns camera access. We intentionally do not use
-        MediaStore, FileProvider, URI grants, or android.permissions here.
-        The camera returns a Bitmap thumbnail through the activity result,
-        which we save into the app's private storage.
-        """
+        """Open the Android system camera without requesting CAMERA permission."""
         print("CAMERA: OPEN")
 
         try:
@@ -67,14 +61,6 @@ class Camera:
                 print("CAMERA: RESULT INTENT NONE")
                 return
 
-            # ACTION_IMAGE_CAPTURE without EXTRA_OUTPUT returns the captured
-            # image as a Bitmap in the "data" extra.
-            bitmap = intent.getParcelableExtra("data")
-
-            if bitmap is None:
-                print("CAMERA: BITMAP RESULT NONE")
-                return
-
             app = App.get_running_app()
             if app is None:
                 print("CAMERA: APP IS NONE")
@@ -91,61 +77,130 @@ class Camera:
                 "camera_" + str(int(time.time() * 1000)) + ".jpg"
             )
 
-            FileOutputStream = autoclass(
-                "java.io.FileOutputStream"
-            )
-            BitmapCompressFormat = autoclass(
-                "android.graphics.Bitmap$CompressFormat"
-            )
+            # Normal ACTION_IMAGE_CAPTURE result: Bitmap in "data".
+            bitmap = None
+            try:
+                bitmap = intent.getParcelableExtra("data")
+            except Exception as e:
+                print("CAMERA: BITMAP READ ERROR:", repr(e))
 
-            output_stream = FileOutputStream(local_path)
+            if bitmap is not None:
+                print("CAMERA: BITMAP RESULT FOUND")
+
+                FileOutputStream = autoclass(
+                    "java.io.FileOutputStream"
+                )
+                BitmapCompressFormat = autoclass(
+                    "android.graphics.Bitmap$CompressFormat"
+                )
+
+                output_stream = FileOutputStream(local_path)
+
+                try:
+                    success = bitmap.compress(
+                        BitmapCompressFormat.JPEG,
+                        92,
+                        output_stream
+                    )
+                finally:
+                    try:
+                        output_stream.close()
+                    except Exception:
+                        pass
+
+                if success and os.path.isfile(local_path):
+                    size = os.path.getsize(local_path)
+                    print("CAMERA: BITMAP SAVED:", local_path, size)
+
+                    if size > 0:
+                        self._deliver_image(local_path)
+                        return
+
+                print("CAMERA: BITMAP SAVE FAILED")
+
+            # Fallback: some camera apps return a content URI instead.
+            try:
+                uri = intent.getData()
+            except Exception as e:
+                uri = None
+                print("CAMERA: URI READ ERROR:", repr(e))
+
+            if uri is not None:
+                print("CAMERA: URI RESULT FOUND:", uri)
+
+                if self._copy_uri_to_file(uri, local_path):
+                    self._deliver_image(local_path)
+                    return
+
+            print("CAMERA: NO USABLE IMAGE RESULT")
 
             try:
-                success = bitmap.compress(
-                    BitmapCompressFormat.JPEG,
-                    92,
-                    output_stream
-                )
-            finally:
-                try:
-                    output_stream.close()
-                except Exception:
-                    pass
-
-            if not success:
-                print("CAMERA: BITMAP COMPRESS FAILED")
-                try:
+                if os.path.isfile(local_path):
                     os.remove(local_path)
-                except Exception:
-                    pass
-                return
-
-            if not os.path.isfile(local_path):
-                print("CAMERA: LOCAL FILE NOT CREATED")
-                return
-
-            size = os.path.getsize(local_path)
-            print("CAMERA: LOCAL FILE SIZE:", size)
-
-            if size <= 0:
-                print("CAMERA: LOCAL FILE EMPTY")
-                try:
-                    os.remove(local_path)
-                except Exception:
-                    pass
-                return
-
-            self.output_path = local_path
-            print("CAMERA: SUCCESS:", local_path)
-
-            if self.on_image:
-                Clock.schedule_once(
-                    lambda dt: self.on_image(local_path),
-                    0
-                )
+            except Exception:
+                pass
 
         except Exception as e:
             print("CAMERA HANDLE ERROR:", repr(e))
+
+    def _copy_uri_to_file(self, uri, local_path):
+        try:
+            PythonActivity = autoclass(
+                "org.kivy.android.PythonActivity"
+            )
+            FileOutputStream = autoclass(
+                "java.io.FileOutputStream"
+            )
+
+            activity = PythonActivity.mActivity
+            resolver = activity.getContentResolver()
+            stream = resolver.openInputStream(uri)
+
+            if stream is None:
+                print("CAMERA: URI INPUT STREAM NONE")
+                return False
+
+            output = FileOutputStream(local_path)
+
+            try:
+                buffer = bytearray(64 * 1024)
+                while True:
+                    count = stream.read(buffer)
+                    if count <= 0:
+                        break
+                    output.write(buffer, 0, count)
+            finally:
+                try:
+                    stream.close()
+                except Exception:
+                    pass
+                try:
+                    output.close()
+                except Exception:
+                    pass
+
+            if not os.path.isfile(local_path):
+                return False
+
+            size = os.path.getsize(local_path)
+            print("CAMERA: URI COPIED:", local_path, size)
+            return size > 0
+
+        except Exception as e:
+            print("CAMERA URI COPY ERROR:", repr(e))
+            return False
+
+    def _deliver_image(self, local_path):
+        self.output_path = local_path
+
+        print("CAMERA: SUCCESS:", local_path)
+        print("CAMERA: SENDING IMAGE TO ADD ITEM")
+
+        if self.on_image:
+            Clock.schedule_once(
+                lambda dt: self.on_image(local_path),
+                0
+            )
 
     def delete_output(self):
         if self.output_path:
