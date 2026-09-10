@@ -77,12 +77,38 @@ class Camera:
                 "camera_" + str(int(time.time() * 1000)) + ".jpg"
             )
 
-            # Normal ACTION_IMAGE_CAPTURE result: Bitmap in "data".
+            # ACTION_IMAGE_CAPTURE normally places a thumbnail Bitmap in
+            # the result extras when EXTRA_OUTPUT is not supplied.
+            # Reading it through Bundle.get() is more reliable with
+            # recent Android/PyJNIus versions than the deprecated
+            # getParcelableExtra(String) overload.
             bitmap = None
+
             try:
-                bitmap = intent.getParcelableExtra("data")
+                extras = intent.getExtras()
+                if extras is not None:
+                    bitmap = extras.get("data")
+                    print(
+                        "CAMERA: RESULT EXTRAS READ, BITMAP:",
+                        bitmap is not None
+                    )
             except Exception as e:
-                print("CAMERA: BITMAP READ ERROR:", repr(e))
+                print("CAMERA: EXTRAS READ ERROR:", repr(e))
+
+            # Keep the old call as a fallback for camera applications
+            # that expose the result through getParcelableExtra().
+            if bitmap is None:
+                try:
+                    bitmap = intent.getParcelableExtra("data")
+                    print(
+                        "CAMERA: PARCELABLE READ, BITMAP:",
+                        bitmap is not None
+                    )
+                except Exception as e:
+                    print(
+                        "CAMERA: PARCELABLE READ ERROR:",
+                        repr(e)
+                    )
 
             if bitmap is not None:
                 print("CAMERA: BITMAP RESULT FOUND")
