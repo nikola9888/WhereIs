@@ -24,19 +24,21 @@ class Camera:
             )
 
             activity = PythonActivity.mActivity
-            package_manager = activity.getPackageManager()
 
-            intent = Intent(Intent.ACTION_IMAGE_CAPTURE)
-
-            if intent.resolveActivity(package_manager) is None:
-                print("CAMERA: NO CAMERA APPLICATION")
-                return False
+            intent = Intent(
+                "android.media.action.IMAGE_CAPTURE"
+            )
 
             print("CAMERA: STARTING NATIVE CAMERA")
+
+            # Do not use resolveActivity() here. Some Android camera
+            # implementations can still handle ACTION_IMAGE_CAPTURE even
+            # when PackageManager does not return the expected resolution.
             activity.startActivityForResult(
                 intent,
                 self.request_code
             )
+
             print("CAMERA: STARTED")
             return True
 
@@ -77,11 +79,6 @@ class Camera:
                 "camera_" + str(int(time.time() * 1000)) + ".jpg"
             )
 
-            # ACTION_IMAGE_CAPTURE normally places a thumbnail Bitmap in
-            # the result extras when EXTRA_OUTPUT is not supplied.
-            # Reading it through Bundle.get() is more reliable with
-            # recent Android/PyJNIus versions than the deprecated
-            # getParcelableExtra(String) overload.
             bitmap = None
 
             try:
@@ -95,8 +92,6 @@ class Camera:
             except Exception as e:
                 print("CAMERA: EXTRAS READ ERROR:", repr(e))
 
-            # Keep the old call as a fallback for camera applications
-            # that expose the result through getParcelableExtra().
             if bitmap is None:
                 try:
                     bitmap = intent.getParcelableExtra("data")
@@ -144,7 +139,6 @@ class Camera:
 
                 print("CAMERA: BITMAP SAVE FAILED")
 
-            # Fallback: some camera apps return a content URI instead.
             try:
                 uri = intent.getData()
             except Exception as e:
