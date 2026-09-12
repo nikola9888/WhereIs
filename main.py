@@ -4,6 +4,9 @@ from kivy.storage.jsonstore import JsonStore
 
 from theme_manager import ThemeManager
 from translations import translations
+from translation_completion import apply_translation_completion
+
+apply_translation_completion(translations)
 
 from screens.home import HomeScreen
 from screens.detail import DetailScreen
@@ -193,6 +196,7 @@ class WhereIsApp(App):
             SettingsScreen(
                 name="settings"
             )
+
         )
 
         # =====================================================
