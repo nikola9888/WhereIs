@@ -261,6 +261,13 @@ class AddItemScreen(Screen):
 
         content.add_widget(icon)
         content.add_widget(label)
+
+        def update_content(widget, *args):
+            content.pos = widget.pos
+            content.size = widget.size
+
+        button.bind(pos=update_content, size=update_content)
+        update_content(button)
         button.add_widget(content)
 
         def update(widget, *args):
@@ -300,7 +307,6 @@ class AddItemScreen(Screen):
         for button in self.category_buttons:
             selected = button.category_id == category_id
             color = theme.PRIMARY if selected else theme.CARD
-            button.bg_rect.source = ""
             button.canvas.before.clear()
             with button.canvas.before:
                 Color(*color)
