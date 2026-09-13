@@ -6,6 +6,7 @@ import theme
 from camera import Camera
 from database import Database
 from image_manager import ImageManager
+from components.icons import get_category_icon
 
 from kivy.app import App
 from kivy.clock import Clock
@@ -14,7 +15,6 @@ from kivy.graphics import Color, RoundedRectangle, Line
 from kivy.uix.screenmanager import Screen
 from kivy.uix.boxlayout import BoxLayout
 from kivy.uix.label import Label
-from kivy.uix.spinner import Spinner
 from kivy.uix.button import Button
 from kivy.uix.textinput import TextInput
 from kivy.uix.scrollview import ScrollView
@@ -34,6 +34,8 @@ class AddItemScreen(Screen):
         self.image_path = ""
         self.edit_mode = False
         self.edit_id = None
+        self.selected_category_id = None
+        self.category_buttons = []
 
         self.camera = Camera(
             request_code=self.CAMERA_REQUEST_CODE,
@@ -42,29 +44,20 @@ class AddItemScreen(Screen):
 
         with self.canvas.before:
             Color(*theme.BACKGROUND)
-            self.bg = RoundedRectangle(
-                pos=self.pos,
-                size=self.size
-            )
+            self.bg = RoundedRectangle(pos=self.pos, size=self.size)
 
-        self.bind(
-            pos=self.update_bg,
-            size=self.update_bg
-        )
+        self.bind(pos=self.update_bg, size=self.update_bg)
 
         scroll = ScrollView(do_scroll_x=False)
-
         self.root_box = BoxLayout(
             orientation="vertical",
             spacing=dp(18),
             padding=dp(20),
             size_hint_y=None
         )
-
         self.root_box.bind(
             minimum_height=self.root_box.setter("height")
         )
-
         scroll.add_widget(self.root_box)
         self.add_widget(scroll)
 
@@ -80,31 +73,36 @@ class AddItemScreen(Screen):
         )
         self.root_box.add_widget(self.title)
 
-        self.name_input = self.create_input(
-            app.tr("item_name"), False, 65
-        )
+        self.name_input = self.create_input(app.tr("item_name"), False, 65)
         self.root_box.add_widget(self.name_input)
 
-        self.location_input = self.create_input(
-            app.tr("location"), False, 65
-        )
+        self.location_input = self.create_input(app.tr("location"), False, 65)
         self.root_box.add_widget(self.location_input)
 
-        self.description_input = self.create_input(
-            app.tr("description"), True, 140
-        )
+        self.description_input = self.create_input(app.tr("description"), True, 140)
         self.root_box.add_widget(self.description_input)
 
-        self.category_spinner = Spinner(
+        self.category_title = Label(
             text=app.tr("choose_category"),
+            color=theme.TEXT_SECONDARY,
+            font_size=24,
+            bold=True,
             size_hint_y=None,
-            height=95,
-            background_normal="",
-            background_color=theme.CARD,
-            color=theme.PRIMARY,
-            font_size=40
+            height=dp(42),
+            halign="left"
         )
-        self.root_box.add_widget(self.category_spinner)
+        self.category_title.bind(size=self.update_label_text_size)
+        self.root_box.add_widget(self.category_title)
+
+        self.category_box = BoxLayout(
+            orientation="vertical",
+            spacing=dp(10),
+            size_hint_y=None
+        )
+        self.category_box.bind(
+            minimum_height=self.category_box.setter("height")
+        )
+        self.root_box.add_widget(self.category_box)
         self.load_categories()
 
         self.preview = Image(
@@ -115,52 +113,210 @@ class AddItemScreen(Screen):
         )
         self.root_box.add_widget(self.preview)
 
-        self.image_button = Button(
-            text=app.tr("add_photo"),
-            size_hint_y=None,
-            height=90,
-            background_normal="",
-            background_color=theme.CARD,
-            color=theme.TEXT,
-            font_size=40
+        self.image_button = self.create_round_button(
+            app.tr("add_photo"),
+            theme.CARD,
+            theme.TEXT,
+            58,
+            28
         )
         self.image_button.bind(on_press=self.choose_image)
         self.root_box.add_widget(self.image_button)
 
-        self.save_button = Button(
-            text=app.tr("save_item"),
-            size_hint_y=None,
-            height=95,
-            background_normal="",
-            background_color=theme.PRIMARY,
-            color=theme.TEXT,
-            font_size=42,
+        self.save_button = self.create_round_button(
+            app.tr("save_item"),
+            theme.PRIMARY,
+            theme.TEXT,
+            64,
+            30,
             bold=True
         )
         self.save_button.bind(on_press=self.save_item)
         self.root_box.add_widget(self.save_button)
 
-        back = Button(
-            text=app.tr("back"),
-            size_hint_y=None,
-            height=90,
-            background_normal="",
-            background_color=theme.CARD,
-            color=theme.TEXT,
-            font_size=45,
+        back = self.create_round_button(
+            app.tr("back"),
+            theme.CARD,
+            theme.TEXT,
+            58,
+            28,
             bold=True
         )
         back.bind(on_press=self.go_back)
         self.root_box.add_widget(back)
 
+    def update_label_text_size(self, widget, size):
+        widget.text_size = size
+
+    def create_round_button(
+        self,
+        text,
+        background,
+        color,
+        height,
+        radius,
+        bold=False
+    ):
+        button = Button(
+            text=text,
+            size_hint_y=None,
+            height=dp(height),
+            background_normal="",
+            background_down="",
+            background_color=(0, 0, 0, 0),
+            color=color,
+            font_size=28,
+            bold=bold
+        )
+
+        with button.canvas.before:
+            Color(*background)
+            button.bg_rect = RoundedRectangle(
+                pos=button.pos,
+                size=button.size,
+                radius=[dp(radius)]
+            )
+
+        with button.canvas.after:
+            Color(*theme.ITEM_BORDER)
+            button.border_line = Line(
+                rounded_rectangle=(
+                    button.x,
+                    button.y,
+                    button.width,
+                    button.height,
+                    dp(radius)
+                ),
+                width=1
+            )
+
+        def update(widget, *args):
+            widget.bg_rect.pos = widget.pos
+            widget.bg_rect.size = widget.size
+            widget.border_line.rounded_rectangle = (
+                widget.x,
+                widget.y,
+                widget.width,
+                widget.height,
+                dp(radius)
+            )
+
+        button.bind(pos=update, size=update)
+        return button
+
+    def create_category_button(self, category_id, category_name, icon_name):
+        app = App.get_running_app()
+
+        button = Button(
+            size_hint_y=None,
+            height=dp(62),
+            background_normal="",
+            background_down="",
+            background_color=(0, 0, 0, 0)
+        )
+
+        with button.canvas.before:
+            Color(*theme.CARD)
+            button.bg_rect = RoundedRectangle(
+                pos=button.pos,
+                size=button.size,
+                radius=[dp(18)]
+            )
+
+        with button.canvas.after:
+            Color(*theme.ITEM_BORDER)
+            button.border_line = Line(
+                rounded_rectangle=(
+                    button.x,
+                    button.y,
+                    button.width,
+                    button.height,
+                    dp(18)
+                ),
+                width=1
+            )
+
+        content = BoxLayout(
+            orientation="horizontal",
+            spacing=dp(12),
+            padding=[dp(14), 0, dp(14), 0]
+        )
+
+        icon = Image(
+            source=get_category_icon(category_name),
+            size_hint_x=None,
+            width=dp(34),
+            allow_stretch=True
+        )
+
+        label = Label(
+            text=app.tr(category_name.lower()),
+            color=theme.TEXT,
+            font_size=25,
+            bold=True,
+            halign="left",
+            valign="middle"
+        )
+        label.bind(size=lambda w, s: setattr(w, "text_size", s))
+
+        content.add_widget(icon)
+        content.add_widget(label)
+        button.add_widget(content)
+
+        def update(widget, *args):
+            widget.bg_rect.pos = widget.pos
+            widget.bg_rect.size = widget.size
+            widget.border_line.rounded_rectangle = (
+                widget.x,
+                widget.y,
+                widget.width,
+                widget.height,
+                dp(18)
+            )
+
+        def select(*args):
+            self.select_category(category_id)
+
+        button.bind(pos=update, size=update, on_press=select)
+        button.category_id = category_id
+        button.category_name = category_name
+        return button
+
+    def load_categories(self):
+        self.category_box.clear_widgets()
+        self.category_buttons = []
+
+        for cat in self.db.get_categories():
+            button = self.create_category_button(cat[0], cat[1], cat[1])
+            self.category_buttons.append(button)
+            self.category_box.add_widget(button)
+
+        if self.category_buttons:
+            self.select_category(self.category_buttons[0].category_id)
+
+    def select_category(self, category_id):
+        self.selected_category_id = category_id
+
+        for button in self.category_buttons:
+            selected = button.category_id == category_id
+            color = theme.PRIMARY if selected else theme.CARD
+            button.bg_rect.source = ""
+            button.canvas.before.clear()
+            with button.canvas.before:
+                Color(*color)
+                button.bg_rect = RoundedRectangle(
+                    pos=button.pos,
+                    size=button.size,
+                    radius=[dp(18)]
+                )
+
+    def get_selected_category_id(self):
+        return self.selected_category_id
+
     def on_activity_result(self, request_code, result_code, intent):
         if request_code == self.CAMERA_REQUEST_CODE:
             try:
-                self.camera.handle_result(
-                    request_code,
-                    result_code,
-                    intent
-                )
+                self.camera.handle_result(request_code, result_code, intent)
             except Exception as e:
                 print("CAMERA RESULT ERROR:", repr(e))
             return
@@ -179,73 +335,35 @@ class AddItemScreen(Screen):
             background_color=theme.CARD,
             foreground_color=theme.TEXT,
             hint_text_color=theme.TEXT_SECONDARY,
-            font_size=62,
-            padding=[dp(3), dp(3)]
+            font_size=32,
+            padding=[dp(10), dp(10)]
         )
 
         with box.canvas.after:
             Color(*theme.INPUT_BORDER)
             box.border_line = Line(
-                rounded_rectangle=(
-                    box.x,
-                    box.y,
-                    box.width,
-                    box.height,
-                    18
-                ),
+                rounded_rectangle=(box.x, box.y, box.width, box.height, 18),
                 width=1
             )
 
-        box.bind(
-            pos=self.update_input_border,
-            size=self.update_input_border
-        )
+        box.bind(pos=self.update_input_border, size=self.update_input_border)
         return box
 
     def update_input_border(self, widget, *args):
         if hasattr(widget, "border_line"):
             widget.border_line.rounded_rectangle = (
-                widget.x,
-                widget.y,
-                widget.width,
-                widget.height,
-                18
+                widget.x, widget.y, widget.width, widget.height, 18
             )
-
-    def load_categories(self):
-        app = App.get_running_app()
-        values = []
-
-        for cat in self.db.get_categories():
-            values.append(app.tr(cat[1].lower()))
-
-        self.category_spinner.values = values
-
-    def get_selected_category_id(self):
-        app = App.get_running_app()
-        selected = self.category_spinner.text
-
-        for cat in self.db.get_categories():
-            if app.tr(cat[1].lower()) == selected:
-                return cat[0]
-
-        return None
 
     def choose_image(self, instance):
         from kivy.uix.popup import Popup
 
-        box = BoxLayout(
-            orientation="vertical",
-            spacing=dp(20),
-            padding=dp(20)
-        )
-
+        box = BoxLayout(orientation="vertical", spacing=dp(20), padding=dp(20))
         camera = Button(
             text=App.get_running_app().tr("camera"),
             size_hint_y=None,
             height=80
         )
-
         gallery = Button(
             text=App.get_running_app().tr("gallery"),
             size_hint_y=None,
@@ -257,14 +375,8 @@ class AddItemScreen(Screen):
             content=box,
             size_hint=(0.8, 0.4)
         )
-
-        camera.bind(
-            on_press=lambda btn: self._select_camera(popup)
-        )
-        gallery.bind(
-            on_press=lambda btn: self._select_gallery(popup)
-        )
-
+        camera.bind(on_press=lambda btn: self._select_camera(popup))
+        gallery.bind(on_press=lambda btn: self._select_gallery(popup))
         box.add_widget(camera)
         box.add_widget(gallery)
         popup.open()
@@ -282,10 +394,8 @@ class AddItemScreen(Screen):
             print("CAMERA: DIRECT OPEN")
             started = self.camera.open()
             print("CAMERA: OPEN RETURNED:", started)
-
             if not started:
                 print("CAMERA: NATIVE CAMERA DID NOT START")
-
         except Exception as e:
             print("CAMERA DIRECT OPEN ERROR:", repr(e))
 
@@ -293,7 +403,6 @@ class AddItemScreen(Screen):
         if not path or not os.path.isfile(path):
             print("CAMERA FILE INVALID:", path)
             return
-
         try:
             if os.path.getsize(path) <= 0:
                 print("CAMERA FILE EMPTY")
@@ -301,12 +410,7 @@ class AddItemScreen(Screen):
         except Exception:
             return
 
-        converted = self.image_manager.copy_and_resize(
-            path,
-            max_size=1600,
-            quality=92
-        )
-
+        converted = self.image_manager.copy_and_resize(path, max_size=1600, quality=92)
         if converted:
             self.image_path = converted
             self.set_preview(converted)
@@ -317,14 +421,9 @@ class AddItemScreen(Screen):
     def open_gallery(self):
         try:
             from jnius import autoclass
-
             Intent = autoclass("android.content.Intent")
-            PythonActivity = autoclass(
-                "org.kivy.android.PythonActivity"
-            )
-
+            PythonActivity = autoclass("org.kivy.android.PythonActivity")
             activity = PythonActivity.mActivity
-
             intent = Intent(Intent.ACTION_OPEN_DOCUMENT)
             intent.addCategory(Intent.CATEGORY_OPENABLE)
             intent.setType("image/*")
@@ -332,48 +431,31 @@ class AddItemScreen(Screen):
                 Intent.FLAG_GRANT_READ_URI_PERMISSION
                 | Intent.FLAG_GRANT_PERSISTABLE_URI_PERMISSION
             )
-
-            activity.startActivityForResult(
-                intent,
-                self.GALLERY_REQUEST_CODE
-            )
-
+            activity.startActivityForResult(intent, self.GALLERY_REQUEST_CODE)
         except Exception as e:
             print("OPEN GALLERY ERROR:", repr(e))
 
     def handle_gallery_result(self, result_code, intent):
         try:
             from jnius import autoclass
-
             Activity = autoclass("android.app.Activity")
-
             if result_code != Activity.RESULT_OK or intent is None:
                 return
-
             uri = intent.getData()
             if uri is None:
                 return
-
             self.copy_android_uri(uri)
-
         except Exception as e:
             print("GALLERY RESULT ERROR:", repr(e))
 
     def copy_android_uri(self, uri):
         try:
             from jnius import autoclass
-
-            PythonActivity = autoclass(
-                "org.kivy.android.PythonActivity"
-            )
-            FileOutputStream = autoclass(
-                "java.io.FileOutputStream"
-            )
-
+            PythonActivity = autoclass("org.kivy.android.PythonActivity")
+            FileOutputStream = autoclass("java.io.FileOutputStream")
             activity = PythonActivity.mActivity
             resolver = activity.getContentResolver()
             stream = resolver.openInputStream(uri)
-
             if stream is None:
                 print("GALLERY: INPUT STREAM NONE")
                 return
@@ -381,14 +463,11 @@ class AddItemScreen(Screen):
             app = App.get_running_app()
             image_dir = os.path.join(app.user_data_dir, "images")
             os.makedirs(image_dir, exist_ok=True)
-
             raw_path = os.path.join(
                 image_dir,
                 "gallery_raw_" + str(int(time.time() * 1000))
             )
-
             output = FileOutputStream(raw_path)
-
             try:
                 buffer = bytearray(64 * 1024)
                 while True:
@@ -410,12 +489,7 @@ class AddItemScreen(Screen):
                 print("GALLERY: COPY FAILED")
                 return
 
-            converted = self.image_manager.copy_and_resize(
-                raw_path,
-                max_size=1600,
-                quality=92
-            )
-
+            converted = self.image_manager.copy_and_resize(raw_path, max_size=1600, quality=92)
             if not converted:
                 print("GALLERY: IMAGE CONVERSION FAILED")
                 return
@@ -428,23 +502,13 @@ class AddItemScreen(Screen):
             self.image_path = converted
             self.set_preview(converted)
             print("GALLERY IMAGE:", converted)
-
         except Exception as e:
             print("COPY GALLERY IMAGE ERROR:", repr(e))
 
     def set_preview(self, path):
-        """Load a newly-created local image after the file is fully ready.
-
-        Android/Kivy can otherwise start loading the file while the previous
-        texture is still attached to the Image widget. The result can be a
-        black preview until the app is restarted. The short scheduled reloads
-        force Kivy to read the finished JPEG again without changing the saved
-        file path in the database.
-        """
         if not path or not os.path.isfile(path):
             print("PREVIEW FILE INVALID:", path)
             return
-
         try:
             if os.path.getsize(path) <= 0:
                 print("PREVIEW FILE EMPTY:", path)
@@ -455,19 +519,12 @@ class AddItemScreen(Screen):
 
         def reload_preview(*args):
             try:
-                if not os.path.isfile(path):
+                if not os.path.isfile(path) or os.path.getsize(path) <= 0:
                     return
-
-                if os.path.getsize(path) <= 0:
-                    return
-
                 self.preview.texture = None
                 self.preview.source = ""
                 self.preview.source = path
                 self.preview.reload()
-
-                print("PREVIEW RELOADED:", path)
-
             except Exception as e:
                 print("PREVIEW RELOAD ERROR:", repr(e))
 
@@ -482,8 +539,6 @@ class AddItemScreen(Screen):
         Clock.schedule_once(reload_preview, 0.60)
 
     def save_item(self, instance):
-        app = App.get_running_app()
-
         name = self.name_input.text.strip()
         if not name:
             print("NAME REQUIRED")
@@ -510,11 +565,7 @@ class AddItemScreen(Screen):
                     description,
                     image_path
                 )
-                self.db.add_history(
-                    self.edit_id,
-                    "Updated",
-                    location
-                )
+                self.db.add_history(self.edit_id, "Updated", location)
             else:
                 item_id = self.db.add_item(
                     name,
@@ -523,18 +574,13 @@ class AddItemScreen(Screen):
                     description,
                     image_path
                 )
-                self.db.add_history(
-                    item_id,
-                    "Created",
-                    location
-                )
+                self.db.add_history(item_id, "Created", location)
         except Exception as e:
             print("SAVE ITEM ERROR:", repr(e))
             return
 
         self.clear_form()
         self.manager.current = "home"
-
         try:
             self.manager.get_screen("home").load_items()
         except Exception as e:
@@ -543,20 +589,12 @@ class AddItemScreen(Screen):
     def load_edit_item(self, item_id):
         self.edit_mode = True
         self.edit_id = item_id
-
         item = self.db.get_item(item_id)
         if not item:
             return
 
         (
-            _,
-            name,
-            category_id,
-            location,
-            description,
-            image_path,
-            _,
-            _
+            _, name, category_id, location, description, image_path, _, _
         ) = item
 
         app = App.get_running_app()
@@ -570,24 +608,22 @@ class AddItemScreen(Screen):
         if self.image_path and os.path.isfile(self.image_path):
             self.set_preview(self.image_path)
 
-        for cat in self.db.get_categories():
-            if cat[0] == category_id:
-                self.category_spinner.text = app.tr(cat[1].lower())
-                break
+        self.select_category(category_id)
 
     def clear_form(self):
         self.edit_mode = False
         self.edit_id = None
-
+        self.selected_category_id = None
         app = App.get_running_app()
         self.title.text = app.tr("add_item")
         self.save_button.text = app.tr("save_item")
         self.name_input.text = ""
         self.location_input.text = ""
         self.description_input.text = ""
-        self.category_spinner.text = app.tr("choose_category")
         self.image_path = ""
         self.preview.source = ""
+        if self.category_buttons:
+            self.select_category(self.category_buttons[0].category_id)
 
     def go_back(self, instance):
         self.manager.current = "home"
