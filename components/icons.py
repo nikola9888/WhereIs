@@ -2,7 +2,7 @@ import os
 
 ICON_FOLDER = os.path.join(
     "assets",
-    "Icon.png"
+    "icons"
 )
 
 
