@@ -92,6 +92,17 @@ class HomeScreen(Screen):
 
         button_box.add_widget(icon)
         button_box.add_widget(text)
+
+        def update_button_content(widget, *args):
+            button_box.pos = widget.pos
+            button_box.size = widget.size
+
+        self.add_button.bind(
+            pos=update_button_content,
+            size=update_button_content
+        )
+        update_button_content(self.add_button)
+
         self.add_button.add_widget(button_box)
         self.add_button.bind(on_press=self.open_add_item)
         root.add_widget(self.add_button)
