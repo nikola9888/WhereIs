@@ -93,24 +93,44 @@ class HomeScreen(Screen):
         button_box = BoxLayout(
             orientation="horizontal",
             spacing=dp(12),
-            padding=[dp(20), 0, dp(20), 0]
+            padding=[dp(20), 0, dp(20), 0],
+            size_hint=(None, None)
         )
 
         if icon_source:
             icon = Image(
                 source=icon_source,
-                size_hint_x=None,
-                width=dp(32)
+                size_hint=(None, None),
+                size=(dp(32), dp(32))
             )
             button_box.add_widget(icon)
 
-        button_box.add_widget(Label(
+        label = Label(
             text=text,
             color=theme.TEXT,
             font_size=30,
-            bold=True
-        ))
+            bold=True,
+            size_hint=(None, None),
+            size=(dp(150), dp(50))
+        )
+        button_box.add_widget(label)
 
+        button_box.size = (
+            sum(child.width for child in button_box.children) + dp(12) + dp(40),
+            dp(64)
+        )
+        button_box.pos = (
+            button.center_x - button_box.width / 2,
+            button.center_y - button_box.height / 2
+        )
+
+        def update_button_content(*args):
+            button_box.pos = (
+                button.center_x - button_box.width / 2,
+                button.center_y - button_box.height / 2
+            )
+
+        button.bind(pos=update_button_content, size=update_button_content)
         button.add_widget(button_box)
         button.bind(on_press=callback)
 
