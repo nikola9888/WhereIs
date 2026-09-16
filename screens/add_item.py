@@ -238,7 +238,7 @@ class AddItemScreen(Screen):
 
         content = BoxLayout(
             orientation="horizontal",
-            spacing=dp(12),
+            spacing=dp(7),
             padding=[dp(14), 0, dp(14), 0]
         )
 
