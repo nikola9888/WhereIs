@@ -4,8 +4,10 @@ from kivy.uix.scrollview import ScrollView
 from kivy.uix.button import Button
 from kivy.uix.label import Label
 from kivy.uix.image import Image
+from kivy.uix.anchorlayout import AnchorLayout
 from kivy.metrics import dp
-from kivy.graphics import Color, RoundedRectangle, Line
+from kivy.resources import resource_find
+from kivy.graphics import Color, RoundedRectangle
 from kivy.app import App
 from database import Database
 import theme
@@ -90,48 +92,56 @@ class HomeScreen(Screen):
             size=lambda *args: self.update_button_bg(button)
         )
 
+        center = AnchorLayout(
+            anchor_x="center",
+            anchor_y="center",
+            size_hint=(1, 1)
+        )
+
         button_box = BoxLayout(
             orientation="horizontal",
             spacing=dp(12),
-            padding=[dp(20), 0, dp(20), 0],
-            size_hint=(None, None)
+            size_hint=(None, None),
+            height=dp(64)
         )
 
         if icon_source:
-            icon = Image(
-                source=icon_source,
-                size_hint=(None, None),
-                size=(dp(32), dp(32))
+            icon_holder = AnchorLayout(
+                size_hint_x=None,
+                width=dp(42),
+                anchor_x="center",
+                anchor_y="center"
             )
-            button_box.add_widget(icon)
+
+            icon = Image(
+                source=resource_find(icon_source) or icon_source,
+                size_hint=(None, None),
+                size=(dp(42), dp(42)),
+                allow_stretch=True,
+                keep_ratio=True,
+                opacity=1
+            )
+
+            icon_holder.add_widget(icon)
+            button_box.add_widget(icon_holder)
 
         label = Label(
             text=text,
             color=theme.TEXT,
-            font_size=30,
+            font_size=45,
             bold=True,
-            size_hint=(None, None),
-            size=(dp(150), dp(50))
+            halign="center",
+            valign="middle",
+            size_hint=(None, 1),
+            width=dp(230)
         )
+        label.bind(size=label.setter("text_size"))
         button_box.add_widget(label)
 
-        button_box.size = (
-            sum(child.width for child in button_box.children) + dp(12) + dp(40),
-            dp(64)
-        )
-        button_box.pos = (
-            button.center_x - button_box.width / 2,
-            button.center_y - button_box.height / 2
-        )
+        button_box.width = dp(42) + dp(12) + dp(230) if icon_source else dp(230)
 
-        def update_button_content(*args):
-            button_box.pos = (
-                button.center_x - button_box.width / 2,
-                button.center_y - button_box.height / 2
-            )
-
-        button.bind(pos=update_button_content, size=update_button_content)
-        button.add_widget(button_box)
+        center.add_widget(button_box)
+        button.add_widget(center)
         button.bind(on_press=callback)
 
         return button
