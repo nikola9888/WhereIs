@@ -131,7 +131,7 @@ class HomeScreen(Screen):
                 content.size = button.size
                 content.pos = button.pos
 
-                total_width = dp(42) + dp(12) + dp(210)
+                total_width = dp(42) + dp(6) + dp(210)
                 start_x = (button.width - total_width) / 2
 
                 icon.pos = (
@@ -139,7 +139,7 @@ class HomeScreen(Screen):
                     button.y + (button.height - dp(42)) / 2
                 )
                 label.pos = (
-                    button.x + start_x + dp(54),
+                    button.x + start_x + dp(48),
                     button.y
                 )
 
