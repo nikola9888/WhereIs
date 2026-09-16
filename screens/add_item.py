@@ -165,7 +165,7 @@ class AddItemScreen(Screen):
             background_down="",
             background_color=(0, 0, 0, 0),
             color=color,
-            font_size=84,
+            font_size=67.2,
             bold=bold
         )
 
