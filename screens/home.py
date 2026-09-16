@@ -7,7 +7,6 @@ from kivy.uix.image import Image
 from kivy.metrics import dp
 from kivy.graphics import Color, RoundedRectangle, Line
 from kivy.app import App
-from kivy.clock import Clock
 from database import Database
 import theme
 from components.item_card import ItemCard
@@ -50,7 +49,27 @@ class HomeScreen(Screen):
         self.scroll.add_widget(self.list_container)
         root.add_widget(self.scroll)
 
-        self.add_button = Button(
+        self.add_button = self.create_main_button(
+            app.tr("add_item"),
+            theme.PRIMARY,
+            self.open_add_item,
+            get_icon(ADD)
+        )
+        root.add_widget(self.add_button)
+
+        self.profile_button = self.create_main_button(
+            "Profile",
+            theme.CARD,
+            self.open_profile,
+            None
+        )
+        root.add_widget(self.profile_button)
+
+        self.add_widget(root)
+        self.load_items()
+
+    def create_main_button(self, text, color, callback, icon_source=None):
+        button = Button(
             size_hint_y=None,
             height=dp(64),
             background_normal="",
@@ -58,17 +77,17 @@ class HomeScreen(Screen):
             background_color=(0, 0, 0, 0)
         )
 
-        with self.add_button.canvas.before:
-            Color(*theme.PRIMARY)
-            self.add_button_bg = RoundedRectangle(
-                pos=self.add_button.pos,
-                size=self.add_button.size,
+        with button.canvas.before:
+            Color(*color)
+            button.bg = RoundedRectangle(
+                pos=button.pos,
+                size=button.size,
                 radius=[dp(22)]
             )
 
-        self.add_button.bind(
-            pos=self.update_add_button,
-            size=self.update_add_button
+        button.bind(
+            pos=lambda *args: self.update_button_bg(button),
+            size=lambda *args: self.update_button_bg(button)
         )
 
         button_box = BoxLayout(
@@ -77,38 +96,29 @@ class HomeScreen(Screen):
             padding=[dp(20), 0, dp(20), 0]
         )
 
-        icon = Image(
-            source=get_icon(ADD),
-            size_hint_x=None,
-            width=dp(32)
-        )
+        if icon_source:
+            icon = Image(
+                source=icon_source,
+                size_hint_x=None,
+                width=dp(32)
+            )
+            button_box.add_widget(icon)
 
-        text = Label(
-            text=app.tr("add_item"),
+        button_box.add_widget(Label(
+            text=text,
             color=theme.TEXT,
             font_size=30,
             bold=True
-        )
+        ))
 
-        button_box.add_widget(icon)
-        button_box.add_widget(text)
+        button.add_widget(button_box)
+        button.bind(on_press=callback)
 
-        def update_button_content(widget, *args):
-            button_box.pos = widget.pos
-            button_box.size = widget.size
+        return button
 
-        self.add_button.bind(
-            pos=update_button_content,
-            size=update_button_content
-        )
-        update_button_content(self.add_button)
-
-        self.add_button.add_widget(button_box)
-        self.add_button.bind(on_press=self.open_add_item)
-        root.add_widget(self.add_button)
-
-        self.add_widget(root)
-        self.load_items()
+    def update_button_bg(self, button):
+        button.bg.pos = button.pos
+        button.bg.size = button.size
 
     def load_items(self):
         self.show_items(self.db.get_all_items())
@@ -162,6 +172,9 @@ class HomeScreen(Screen):
     def open_add_item(self, instance):
         self.manager.current = "add_item"
 
+    def open_profile(self, instance):
+        self.manager.current = "profile"
+
     def refresh(self):
         self.load_items()
 
@@ -172,10 +185,6 @@ class HomeScreen(Screen):
     def update_bg(self, *args):
         self.bg.pos = self.pos
         self.bg.size = self.size
-
-    def update_add_button(self, *args):
-        self.add_button_bg.pos = self.add_button.pos
-        self.add_button_bg.size = self.add_button.size
 
     def on_pre_enter(self):
         self.load_items()
