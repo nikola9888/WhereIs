@@ -165,7 +165,7 @@ class AddItemScreen(Screen):
             background_down="",
             background_color=(0, 0, 0, 0),
             color=color,
-            font_size=28,
+            font_size=84,
             bold=bold
         )
 
@@ -252,7 +252,7 @@ class AddItemScreen(Screen):
         label = Label(
             text=app.tr(category_name.lower()),
             color=theme.TEXT,
-            font_size=25,
+            font_size=50,
             bold=True,
             halign="left",
             valign="middle"
