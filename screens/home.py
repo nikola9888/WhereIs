@@ -4,7 +4,7 @@ from kivy.uix.scrollview import ScrollView
 from kivy.uix.button import Button
 from kivy.uix.label import Label
 from kivy.uix.image import Image
-from kivy.uix.anchorlayout import AnchorLayout
+from kivy.uix.floatlayout import FloatLayout
 from kivy.metrics import dp
 from kivy.resources import resource_find
 from kivy.graphics import Color, RoundedRectangle
@@ -76,7 +76,8 @@ class HomeScreen(Screen):
             height=dp(64),
             background_normal="",
             background_down="",
-            background_color=(0, 0, 0, 0)
+            background_color=(0, 0, 0, 0),
+            text=""
         )
 
         with button.canvas.before:
@@ -92,56 +93,47 @@ class HomeScreen(Screen):
             size=lambda *args: self.update_button_bg(button)
         )
 
-        center = AnchorLayout(
-            anchor_x="center",
-            anchor_y="center",
-            size_hint=(1, 1)
-        )
-
-        button_box = BoxLayout(
-            orientation="horizontal",
-            spacing=dp(12),
-            size_hint=(None, None),
-            height=dp(64)
-        )
+        content = FloatLayout(size_hint=(1, 1))
 
         if icon_source:
-            icon_holder = AnchorLayout(
-                size_hint_x=None,
-                width=dp(42),
-                anchor_x="center",
-                anchor_y="center"
-            )
-
+            icon_path = resource_find(icon_source) or icon_source
             icon = Image(
-                source=resource_find(icon_source) or icon_source,
+                source=icon_path,
                 size_hint=(None, None),
                 size=(dp(42), dp(42)),
+                pos_hint={"center_x": 0.38, "center_y": 0.5},
                 allow_stretch=True,
                 keep_ratio=True,
                 opacity=1
             )
+            content.add_widget(icon)
 
-            icon_holder.add_widget(icon)
-            button_box.add_widget(icon_holder)
+            label = Label(
+                text=text,
+                color=theme.TEXT,
+                font_size=45,
+                bold=True,
+                halign="left",
+                valign="middle",
+                size_hint=(None, 1),
+                width=dp(210),
+                pos_hint={"center_x": 0.61, "center_y": 0.5}
+            )
+        else:
+            label = Label(
+                text=text,
+                color=theme.TEXT,
+                font_size=45,
+                bold=True,
+                halign="center",
+                valign="middle",
+                size_hint=(1, 1),
+                pos_hint={"center_x": 0.5, "center_y": 0.5}
+            )
 
-        label = Label(
-            text=text,
-            color=theme.TEXT,
-            font_size=45,
-            bold=True,
-            halign="center",
-            valign="middle",
-            size_hint=(None, 1),
-            width=dp(230)
-        )
         label.bind(size=label.setter("text_size"))
-        button_box.add_widget(label)
-
-        button_box.width = dp(42) + dp(12) + dp(230) if icon_source else dp(230)
-
-        center.add_widget(button_box)
-        button.add_widget(center)
+        content.add_widget(label)
+        button.add_widget(content)
         button.bind(on_press=callback)
 
         return button
