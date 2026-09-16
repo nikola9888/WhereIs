@@ -116,7 +116,7 @@ class HomeScreen(Screen):
             label = Label(
                 text=text,
                 color=theme.TEXT,
-                font_size=45,
+                font_size=90,
                 bold=True,
                 halign="center",
                 valign="middle",
@@ -150,7 +150,7 @@ class HomeScreen(Screen):
             label = Label(
                 text=text,
                 color=theme.TEXT,
-                font_size=45,
+                font_size=90,
                 bold=True,
                 halign="center",
                 valign="middle",
