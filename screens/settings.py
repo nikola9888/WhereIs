@@ -396,18 +396,59 @@ class SettingsScreen(Screen):
             "whereis.db"
         )
 
-        destination = "/storage/emulated/0/Download/whereis_backup.db"
-
         try:
 
-            shutil.copy2(
-                source,
-                destination
-            )
+            if not os.path.exists(source):
+                raise FileNotFoundError(source)
+
+            # Android 10+ blocks direct filesystem writes to shared
+            # storage. Use MediaStore so the backup is saved normally
+            # into the public Downloads folder without storage permission.
+            from jnius import autoclass, cast
+
+            PythonActivity = autoclass("org.kivy.android.PythonActivity")
+            MediaStore = autoclass("android.provider.MediaStore")
+            ContentValues = autoclass("android.content.ContentValues")
+            Build = autoclass("android.os.Build")
+
+            activity = PythonActivity.mActivity
+            resolver = activity.getContentResolver()
+
+            values = ContentValues()
+            values.put(MediaStore.MediaColumns.DISPLAY_NAME, "whereis_backup.db")
+            values.put(MediaStore.MediaColumns.MIME_TYPE, "application/octet-stream")
+
+            if Build.VERSION.SDK_INT >= 29:
+                values.put(MediaStore.MediaColumns.RELATIVE_PATH, "Download")
+                values.put(MediaStore.MediaColumns.IS_PENDING, 1)
+                collection = MediaStore.Downloads.EXTERNAL_CONTENT_URI
+            else:
+                collection = MediaStore.Files.getContentUri("external")
+
+            uri = resolver.insert(collection, values)
+
+            if uri is None:
+                raise IOError("Could not create backup file")
+
+            try:
+                output_stream = resolver.openOutputStream(uri)
+                with open(source, "rb") as input_file:
+                    data = input_file.read()
+                output_stream.write(data)
+                output_stream.close()
+
+                if Build.VERSION.SDK_INT >= 29:
+                    values = ContentValues()
+                    values.put(MediaStore.MediaColumns.IS_PENDING, 0)
+                    resolver.update(uri, values, None, None)
+
+            except Exception:
+                resolver.delete(uri, None, None)
+                raise
 
             self.show_message(
                 app.tr("backup_title"),
-                app.tr("backup_saved") + "\n" + destination
+                app.tr("backup_saved") + "\nDownload/whereis_backup.db"
             )
 
         except Exception as e:
@@ -429,34 +470,82 @@ class SettingsScreen(Screen):
         )
 
 
-        if not os.path.exists(backup_file):
-
-            self.show_message(
-                app.tr("restore_title"),
-                app.tr("restore_not_found")
-            )
-
-            return
-
-
         try:
 
-            shutil.copy2(
-                backup_file,
-                database_file
-            )
- 
+            # Android 10+ shared storage must be read through MediaStore.
+            from jnius import autoclass
+
+            MediaStore = autoclass("android.provider.MediaStore")
+            Build = autoclass("android.os.Build")
+            PythonActivity = autoclass("org.kivy.android.PythonActivity")
+
+            if Build.VERSION.SDK_INT >= 29:
+                activity = PythonActivity.mActivity
+                resolver = activity.getContentResolver()
+                collection = MediaStore.Downloads.EXTERNAL_CONTENT_URI
+
+                projection = [MediaStore.MediaColumns._ID]
+                selection = MediaStore.MediaColumns.DISPLAY_NAME + "=?"
+                selection_args = ["whereis_backup.db"]
+                cursor = resolver.query(
+                    collection,
+                    projection,
+                    selection,
+                    selection_args,
+                    None
+                )
+
+                if cursor is None or not cursor.moveToFirst():
+                    if cursor is not None:
+                        cursor.close()
+                    self.show_message(
+                        app.tr("restore_title"),
+                        app.tr("restore_not_found")
+                    )
+                    return
+
+                column_index = cursor.getColumnIndexOrThrow(
+                    MediaStore.MediaColumns._ID
+                )
+                file_id = cursor.getLong(column_index)
+                cursor.close()
+
+                from android.net import Uri
+                uri = Uri.withAppendedPath(
+                    collection,
+                    str(file_id)
+                )
+
+                input_stream = resolver.openInputStream(uri)
+                with open(database_file, "wb") as output_file:
+                    buffer = bytearray(8192)
+                    while True:
+                        count = input_stream.read(buffer)
+                        if count <= 0:
+                            break
+                        output_file.write(buffer[:count])
+                input_stream.close()
+
+            else:
+                if not os.path.exists(backup_file):
+                    self.show_message(
+                        app.tr("restore_title"),
+                        app.tr("restore_not_found")
+                    )
+                    return
+
+                shutil.copy2(
+                    backup_file,
+                    database_file
+                )
 
             self.show_message(
                 app.tr("restore_title"),
                 app.tr("restore_success")
             )
 
-
             home = app.root.get_screen("home")
-
             home.load_items()
-
 
         except Exception as e:
 
