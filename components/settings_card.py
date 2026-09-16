@@ -1,15 +1,16 @@
 from kivy.uix.boxlayout import BoxLayout
 from kivy.uix.label import Label
 from kivy.uix.image import Image
+from kivy.uix.anchorlayout import AnchorLayout
 from kivy.uix.behaviors import ButtonBehavior
 
 from kivy.metrics import dp
+from kivy.resources import resource_find
 from kivy.graphics import Color, RoundedRectangle, Line
 
 from theme import (
     CARD,
     PRIMARY,
-    TEXT,
     TEXT_SECONDARY,
     ITEM_BORDER
 )
@@ -31,8 +32,8 @@ class SettingsCard(ButtonBehavior, BoxLayout):
         self.callback = callback
 
         self.orientation = "horizontal"
-        self.spacing = dp(10)
-        self.padding = dp(10)
+        self.padding = 0
+        self.spacing = 0
         self.size_hint_y = None
         self.height = dp(105)
 
@@ -62,36 +63,49 @@ class SettingsCard(ButtonBehavior, BoxLayout):
             size=self.update_bg
         )
 
-        # Centered content group
+        # AnchorLayout is used because SettingsCard is a horizontal
+        # BoxLayout. That makes the complete icon + text group truly
+        # centered on the card instead of relying on center_x in the
+        # BoxLayout's main axis.
+        center = AnchorLayout(
+            anchor_x="center",
+            anchor_y="center",
+            size_hint=(1, 1)
+        )
+
         content = BoxLayout(
             orientation="horizontal",
             spacing=dp(12),
-            size_hint_x=0.78,
-            size_hint_y=1,
-            pos_hint={"center_x": 0.5}
+            size_hint=(None, 1),
+            width=dp(325)
         )
 
-        icon_img = Image(
-            source=icon,
+        icon_holder = AnchorLayout(
             size_hint_x=None,
-            size_hint_y=None,
+            width=dp(58),
+            size_hint_y=1,
+            anchor_x="center",
+            anchor_y="center"
+        )
+
+        icon_path = resource_find(icon) or icon
+
+        icon_img = Image(
+            source=icon_path,
+            size_hint=(None, None),
             width=dp(58),
             height=dp(58),
             allow_stretch=True,
-            keep_ratio=True
-        )
-
-        icon_holder = BoxLayout(
-            size_hint_x=None,
-            width=dp(58),
-            size_hint_y=1
+            keep_ratio=True,
+            opacity=1
         )
         icon_holder.add_widget(icon_img)
 
         text_box = BoxLayout(
             orientation="vertical",
-            spacing=dp(2),
-            size_hint_x=1
+            spacing=0,
+            size_hint_x=None,
+            width=dp(255)
         )
 
         title_label = Label(
@@ -101,11 +115,8 @@ class SettingsCard(ButtonBehavior, BoxLayout):
             bold=True,
             halign="left",
             valign="middle",
-            size_hint_y=0.58
-        )
-
-        title_label.bind(
-            size=title_label.setter("text_size")
+            size_hint_y=0.58,
+            text_size=(dp(255), None)
         )
 
         subtitle_label = Label(
@@ -114,11 +125,8 @@ class SettingsCard(ButtonBehavior, BoxLayout):
             font_size=51,
             halign="left",
             valign="middle",
-            size_hint_y=0.42
-        )
-
-        subtitle_label.bind(
-            size=subtitle_label.setter("text_size")
+            size_hint_y=0.42,
+            text_size=(dp(255), None)
         )
 
         text_box.add_widget(title_label)
@@ -126,8 +134,8 @@ class SettingsCard(ButtonBehavior, BoxLayout):
 
         content.add_widget(icon_holder)
         content.add_widget(text_box)
-
-        self.add_widget(content)
+        center.add_widget(content)
+        self.add_widget(center)
 
     def on_press(self):
         if self.callback:
