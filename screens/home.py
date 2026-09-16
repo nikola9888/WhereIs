@@ -93,32 +93,59 @@ class HomeScreen(Screen):
             size=lambda *args: self.update_button_bg(button)
         )
 
-        content = FloatLayout(size_hint=(1, 1))
+        content = FloatLayout(
+            size=button.size,
+            size_hint=(1, 1),
+            pos=(0, 0)
+        )
+        button.add_widget(content)
 
         if icon_source:
-            icon_path = resource_find(icon_source) or icon_source
+            icon_path = resource_find(icon_source) or resource_find(
+                get_icon(ADD)
+            ) or icon_source
+
             icon = Image(
                 source=icon_path,
                 size_hint=(None, None),
                 size=(dp(42), dp(42)),
-                pos_hint={"center_x": 0.38, "center_y": 0.5},
                 allow_stretch=True,
-                keep_ratio=True,
-                opacity=1
+                keep_ratio=True
             )
-            content.add_widget(icon)
 
             label = Label(
                 text=text,
                 color=theme.TEXT,
                 font_size=45,
                 bold=True,
-                halign="left",
+                halign="center",
                 valign="middle",
-                size_hint=(None, 1),
-                width=dp(210),
-                pos_hint={"center_x": 0.61, "center_y": 0.5}
+                size_hint=(None, None),
+                size=(dp(210), dp(64))
             )
+
+            content.add_widget(icon)
+            content.add_widget(label)
+
+            def position_add_content(*args):
+                content.size = button.size
+                content.pos = button.pos
+
+                total_width = dp(42) + dp(12) + dp(210)
+                start_x = (button.width - total_width) / 2
+
+                icon.pos = (
+                    button.x + start_x,
+                    button.y + (button.height - dp(42)) / 2
+                )
+                label.pos = (
+                    button.x + start_x + dp(54),
+                    button.y
+                )
+
+            button.bind(pos=position_add_content, size=position_add_content)
+            position_add_content()
+
         else:
             label = Label(
                 text=text,
@@ -127,15 +154,23 @@ class HomeScreen(Screen):
                 bold=True,
                 halign="center",
                 valign="middle",
-                size_hint=(1, 1),
-                pos_hint={"center_x": 0.5, "center_y": 0.5}
+                size_hint=(None, None),
+                size=button.size,
+                pos=button.pos
             )
+            label.bind(size=label.setter("text_size"))
+            content.add_widget(label)
 
-        label.bind(size=label.setter("text_size"))
-        content.add_widget(label)
-        button.add_widget(content)
+            def position_profile(*args):
+                content.size = button.size
+                content.pos = button.pos
+                label.pos = button.pos
+                label.size = button.size
+
+            button.bind(pos=position_profile, size=position_profile)
+            position_profile()
+
         button.bind(on_press=callback)
-
         return button
 
     def update_button_bg(self, button):
