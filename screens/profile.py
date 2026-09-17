@@ -121,7 +121,7 @@ class ProfileScreen(Screen):
             background_normal="",
             background_color=theme.PRIMARY,
             color=theme.TEXT,
-            font_size=183.6,
+            font_size=91.8,
             bold=True
         )
         save.bind(on_press=self.save_profile)
@@ -158,7 +158,7 @@ class ProfileScreen(Screen):
             background_normal="",
             background_color=theme.PRIMARY,
             color=theme.TEXT,
-            font_size=183.6,
+            font_size=91.8,
             bold=True
         )
         connect.bind(on_press=self.add_connection)
@@ -167,7 +167,7 @@ class ProfileScreen(Screen):
         self.connections_label = Label(
             text=self.connections_text(),
             color=theme.TEXT_SECONDARY,
-            font_size=88,
+            font_size=70.4,
             halign="left",
             valign="top",
             size_hint_y=None,
@@ -183,7 +183,7 @@ class ProfileScreen(Screen):
             background_normal="",
             background_color=theme.CARD,
             color=theme.TEXT,
-            font_size=214.2,
+            font_size=107.1,
             bold=True
         )
         back.bind(on_press=self.go_back)
