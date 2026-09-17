@@ -244,9 +244,9 @@ class AddItemScreen(Screen):
 
         content = BoxLayout(
             orientation="horizontal",
-            spacing=dp(6),
+            spacing=dp(12),
             size_hint=(None, 1),
-            width=dp(58) + dp(6) + dp(210)
+            width=dp(58) + dp(12) + dp(210)
         )
 
         icon = Image(
