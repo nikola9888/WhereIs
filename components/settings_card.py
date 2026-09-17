@@ -111,7 +111,7 @@ class SettingsCard(ButtonBehavior, BoxLayout):
         title_label = Label(
             text=title,
             color=PRIMARY,
-            font_size=60,
+            font_size=40,
             bold=True,
             halign="left",
             valign="middle",
@@ -122,7 +122,7 @@ class SettingsCard(ButtonBehavior, BoxLayout):
         subtitle_label = Label(
             text=subtitle,
             color=TEXT_SECONDARY,
-            font_size=51,
+            font_size=34,
             halign="left",
             valign="middle",
             size_hint_y=0.42,
