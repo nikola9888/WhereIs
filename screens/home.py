@@ -118,7 +118,7 @@ class HomeScreen(Screen):
                 color=theme.TEXT,
                 font_size=72,
                 bold=True,
-                halign="center",
+                halign="left",
                 valign="middle",
                 size_hint=(None, None),
                 size=(dp(210), dp(64))
