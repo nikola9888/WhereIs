@@ -86,9 +86,9 @@ class ProfileScreen(Screen):
         card.add_widget(Label(
             text="Profile ID",
             color=theme.TEXT_SECONDARY,
-            font_size=81.6,
+            font_size=48,
             size_hint_y=None,
-            height=dp(90)
+            height=dp(55)
         ))
 
         card.add_widget(Label(
@@ -132,10 +132,10 @@ class ProfileScreen(Screen):
         root.add_widget(Label(
             text="Connections",
             color=theme.PRIMARY,
-            font_size=115.6,
+            font_size=68,
             bold=True,
             size_hint_y=None,
-            height=dp(125)
+            height=dp(80)
         ))
 
         self.connection_input = TextInput(
@@ -167,11 +167,11 @@ class ProfileScreen(Screen):
         self.connections_label = Label(
             text=self.connections_text(),
             color=theme.TEXT_SECONDARY,
-            font_size=74.8,
+            font_size=44,
             halign="left",
             valign="top",
             size_hint_y=None,
-            height=dp(130)
+            height=dp(100)
         )
         self.connections_label.bind(size=self.connections_label.setter("text_size"))
         root.add_widget(self.connections_label)
