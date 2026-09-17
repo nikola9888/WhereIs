@@ -86,9 +86,9 @@ class ProfileScreen(Screen):
         card.add_widget(Label(
             text="Profile ID",
             color=theme.TEXT_SECONDARY,
-            font_size=48,
+            font_size=81.6,
             size_hint_y=None,
-            height=dp(55)
+            height=dp(90)
         ))
 
         card.add_widget(Label(
@@ -121,7 +121,7 @@ class ProfileScreen(Screen):
             background_normal="",
             background_color=theme.PRIMARY,
             color=theme.TEXT,
-            font_size=36,
+            font_size=61.2,
             bold=True
         )
         save.bind(on_press=self.save_profile)
@@ -132,10 +132,10 @@ class ProfileScreen(Screen):
         root.add_widget(Label(
             text="Connections",
             color=theme.PRIMARY,
-            font_size=68,
+            font_size=115.6,
             bold=True,
             size_hint_y=None,
-            height=dp(80)
+            height=dp(125)
         ))
 
         self.connection_input = TextInput(
@@ -158,7 +158,7 @@ class ProfileScreen(Screen):
             background_normal="",
             background_color=theme.PRIMARY,
             color=theme.TEXT,
-            font_size=36,
+            font_size=61.2,
             bold=True
         )
         connect.bind(on_press=self.add_connection)
@@ -167,11 +167,11 @@ class ProfileScreen(Screen):
         self.connections_label = Label(
             text=self.connections_text(),
             color=theme.TEXT_SECONDARY,
-            font_size=44,
+            font_size=74.8,
             halign="left",
             valign="top",
             size_hint_y=None,
-            height=dp(100)
+            height=dp(130)
         )
         self.connections_label.bind(size=self.connections_label.setter("text_size"))
         root.add_widget(self.connections_label)
@@ -183,7 +183,7 @@ class ProfileScreen(Screen):
             background_normal="",
             background_color=theme.CARD,
             color=theme.TEXT,
-            font_size=42,
+            font_size=71.4,
             bold=True
         )
         back.bind(on_press=self.go_back)
