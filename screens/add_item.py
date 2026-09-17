@@ -113,7 +113,7 @@ class AddItemScreen(Screen):
         )
         self.root_box.add_widget(self.preview)
 
-        self.image_button = self.create_round_button(
+        self.image_button = self.create_image_button(
             app.tr("add_photo"),
             theme.CARD,
             theme.TEXT,
@@ -189,6 +189,99 @@ class AddItemScreen(Screen):
                 ),
                 width=1
             )
+
+        def update(widget, *args):
+            widget.bg_rect.pos = widget.pos
+            widget.bg_rect.size = widget.size
+            widget.border_line.rounded_rectangle = (
+                widget.x,
+                widget.y,
+                widget.width,
+                widget.height,
+                dp(radius)
+            )
+
+        button.bind(pos=update, size=update)
+        return button
+
+    def create_image_button(
+        self,
+        text,
+        background,
+        color,
+        height,
+        radius,
+        bold=False
+    ):
+        button = Button(
+            size_hint_y=None,
+            height=dp(height),
+            background_normal="",
+            background_down="",
+            background_color=(0, 0, 0, 0)
+        )
+
+        with button.canvas.before:
+            Color(*background)
+            button.bg_rect = RoundedRectangle(
+                pos=button.pos,
+                size=button.size,
+                radius=[dp(radius)]
+            )
+
+        with button.canvas.after:
+            Color(*theme.ITEM_BORDER)
+            button.border_line = Line(
+                rounded_rectangle=(
+                    button.x,
+                    button.y,
+                    button.width,
+                    button.height,
+                    dp(radius)
+                ),
+                width=1
+            )
+
+        content = BoxLayout(
+            orientation="horizontal",
+            spacing=dp(6),
+            size_hint=(None, 1),
+            width=dp(58) + dp(6) + dp(210)
+        )
+
+        icon = Image(
+            source="assets/icons/camera.png",
+            size_hint_x=None,
+            width=dp(58),
+            allow_stretch=True,
+            keep_ratio=True
+        )
+
+        label = Label(
+            text=text,
+            color=color,
+            font_size=67.2,
+            bold=bold,
+            halign="left",
+            valign="middle",
+            size_hint_x=None,
+            width=dp(210)
+        )
+        label.bind(size=lambda w, s: setattr(w, "text_size", s))
+
+        content.add_widget(icon)
+        content.add_widget(label)
+
+        def update_content(widget, *args):
+            content.pos = (
+                widget.x + (widget.width - content.width) / 2,
+                widget.y
+            )
+            content.height = widget.height
+
+        button.bind(pos=update_content, size=update_content)
+        update_content(button)
+        button.add_widget(content)
 
         def update(widget, *args):
             widget.bg_rect.pos = widget.pos
