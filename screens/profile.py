@@ -86,18 +86,18 @@ class ProfileScreen(Screen):
         card.add_widget(Label(
             text="Profile ID",
             color=theme.TEXT_SECONDARY,
-            font_size=24,
+            font_size=48,
             size_hint_y=None,
-            height=dp(35)
+            height=dp(55)
         ))
 
         card.add_widget(Label(
             text=self.profile_id,
             color=theme.PRIMARY,
-            font_size=34,
+            font_size=68,
             bold=True,
             size_hint_y=None,
-            height=dp(50)
+            height=dp(75)
         ))
 
         self.name_input = TextInput(
@@ -121,7 +121,7 @@ class ProfileScreen(Screen):
             background_normal="",
             background_color=theme.PRIMARY,
             color=theme.TEXT,
-            font_size=24,
+            font_size=36,
             bold=True
         )
         save.bind(on_press=self.save_profile)
@@ -132,10 +132,10 @@ class ProfileScreen(Screen):
         root.add_widget(Label(
             text="Connections",
             color=theme.PRIMARY,
-            font_size=34,
+            font_size=68,
             bold=True,
             size_hint_y=None,
-            height=dp(50)
+            height=dp(80)
         ))
 
         self.connection_input = TextInput(
@@ -158,7 +158,7 @@ class ProfileScreen(Screen):
             background_normal="",
             background_color=theme.PRIMARY,
             color=theme.TEXT,
-            font_size=24,
+            font_size=36,
             bold=True
         )
         connect.bind(on_press=self.add_connection)
@@ -167,7 +167,7 @@ class ProfileScreen(Screen):
         self.connections_label = Label(
             text=self.connections_text(),
             color=theme.TEXT_SECONDARY,
-            font_size=22,
+            font_size=44,
             halign="left",
             valign="top",
             size_hint_y=None,
@@ -183,7 +183,8 @@ class ProfileScreen(Screen):
             background_normal="",
             background_color=theme.CARD,
             color=theme.TEXT,
-            font_size=28
+            font_size=42,
+            bold=True
         )
         back.bind(on_press=self.go_back)
         root.add_widget(back)
