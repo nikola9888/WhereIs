@@ -291,11 +291,18 @@ class ProfileScreen(Screen):
         return "\n".join("• " + value for value in connections)
 
     def save_profile(self, instance):
+        # The Profile ID is permanent. Only the profile name can change.
+        profile_name = self.name_input.text.strip()
+
         self.store.put(
             "profile",
             id=self.profile_id,
-            name=self.name_input.text.strip()
+            name=profile_name
         )
+
+        # Reload the stored value so the screen always uses the persisted ID.
+        stored_profile = self.store.get("profile")
+        self.profile_id = stored_profile.get("id", self.profile_id)
 
     def add_connection(self, instance):
         value = self.connection_input.text.strip().upper()
