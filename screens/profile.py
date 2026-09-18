@@ -150,7 +150,7 @@ class ProfileScreen(Screen):
         self.connections_label = Label(
             text=self.connections_text(),
             color=theme.TEXT_SECONDARY,
-            font_size=70.4,
+            font_size=63.36,
             halign="left",
             valign="top",
             size_hint_y=None,
