@@ -63,7 +63,7 @@ class ProfileScreen(Screen):
             spacing=dp(12),
             padding=dp(18),
             size_hint_y=None,
-            height=dp(230)
+            height=dp(330)
         )
 
         with card.canvas.before:
