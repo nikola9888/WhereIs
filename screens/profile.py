@@ -63,7 +63,7 @@ class ProfileScreen(Screen):
             spacing=dp(12),
             padding=dp(18),
             size_hint_y=None,
-            height=dp(330)
+            height=dp(230)
         )
 
         with card.canvas.before:
@@ -241,47 +241,13 @@ class ProfileScreen(Screen):
             height=dp(50),
             background_normal="",
             background_active="",
-            background_color=(0, 0, 0, 0),
+            background_color=background,
             foreground_color=theme.WHITE,
             hint_text_color=theme.TEXT_SECONDARY,
             font_size=32,
             cursor_color=theme.PRIMARY,
             padding=[dp(12), dp(10)]
         )
-
-        with box.canvas.before:
-            Color(*background)
-            box.bg_rect = RoundedRectangle(
-                pos=box.pos,
-                size=box.size,
-                radius=[dp(16)]
-            )
-
-        with box.canvas.after:
-            Color(*theme.ITEM_BORDER)
-            box.border_line = Line(
-                rounded_rectangle=(
-                    box.x,
-                    box.y,
-                    box.width,
-                    box.height,
-                    dp(16)
-                ),
-                width=1
-            )
-
-        def update(widget, *args):
-            widget.bg_rect.pos = widget.pos
-            widget.bg_rect.size = widget.size
-            widget.border_line.rounded_rectangle = (
-                widget.x,
-                widget.y,
-                widget.width,
-                widget.height,
-                dp(16)
-            )
-
-        box.bind(pos=update, size=update)
         return box
 
     def get_profile_name(self):
