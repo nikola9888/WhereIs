@@ -35,14 +35,14 @@ class SettingsCard(ButtonBehavior, BoxLayout):
         self.padding = 0
         self.spacing = 0
         self.size_hint_y = None
-        self.height = dp(105)
+        self.height = dp(94.5)
 
         with self.canvas.before:
             Color(*CARD)
             self.bg = RoundedRectangle(
                 pos=self.pos,
                 size=self.size,
-                radius=[22]
+                radius=[19.8]
             )
 
         with self.canvas.after:
@@ -75,14 +75,14 @@ class SettingsCard(ButtonBehavior, BoxLayout):
 
         content = BoxLayout(
             orientation="horizontal",
-            spacing=dp(12),
+            spacing=dp(10.8),
             size_hint=(None, 1),
-            width=dp(325)
+            width=dp(292.5)
         )
 
         icon_holder = AnchorLayout(
             size_hint_x=None,
-            width=dp(58),
+            width=dp(52.2),
             size_hint_y=1,
             anchor_x="center",
             anchor_y="center"
@@ -105,24 +105,24 @@ class SettingsCard(ButtonBehavior, BoxLayout):
             orientation="vertical",
             spacing=0,
             size_hint_x=None,
-            width=dp(255)
+            width=dp(229.5)
         )
 
         title_label = Label(
             text=title,
             color=PRIMARY,
-            font_size=40,
+            font_size=36,
             bold=True,
             halign="left",
             valign="middle",
             size_hint_y=0.58,
-            text_size=(dp(255), None)
+            text_size=(dp(229.5), None)
         )
 
         subtitle_label = Label(
             text=subtitle,
             color=TEXT_SECONDARY,
-            font_size=34,
+            font_size=30.6,
             halign="left",
             valign="middle",
             size_hint_y=0.42,
