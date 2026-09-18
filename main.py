@@ -14,6 +14,7 @@ from screens.add_item import AddItemScreen
 from screens.settings import SettingsScreen
 from screens.search import SearchScreen
 from screens.profile import ProfileScreen
+from screens.receive import ReceiveScreen
 
 
 class WhereIsApp(App):
@@ -97,6 +98,7 @@ class WhereIsApp(App):
         sm.add_widget(AddItemScreen(name="add_item"))
         sm.add_widget(SettingsScreen(name="settings"))
         sm.add_widget(ProfileScreen(name="profile"))
+        sm.add_widget(ReceiveScreen(name="receive"))
 
         sm.current = "home"
 
