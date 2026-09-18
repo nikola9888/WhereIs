@@ -241,13 +241,27 @@ class ProfileScreen(Screen):
             height=dp(50),
             background_normal="",
             background_active="",
-            background_color=background,
+            background_color=(0, 0, 0, 0),
             foreground_color=theme.WHITE,
             hint_text_color=theme.TEXT_SECONDARY,
             font_size=32,
             cursor_color=theme.PRIMARY,
             padding=[dp(12), dp(10)]
         )
+
+        with box.canvas.before:
+            Color(*background)
+            box.bg_rect = RoundedRectangle(
+                pos=box.pos,
+                size=box.size,
+                radius=[dp(16)]
+            )
+
+        def update_input(widget, *args):
+            widget.bg_rect.pos = widget.pos
+            widget.bg_rect.size = widget.size
+
+        box.bind(pos=update_input, size=update_input)
         return box
 
     def get_profile_name(self):
