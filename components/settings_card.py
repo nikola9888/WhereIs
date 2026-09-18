@@ -8,12 +8,7 @@ from kivy.metrics import dp
 from kivy.resources import resource_find
 from kivy.graphics import Color, RoundedRectangle, Line
 
-from theme import (
-    CARD,
-    PRIMARY,
-    TEXT_SECONDARY,
-    ITEM_BORDER
-)
+import theme
 
 
 class SettingsCard(ButtonBehavior, BoxLayout):
@@ -53,7 +48,7 @@ class SettingsCard(ButtonBehavior, BoxLayout):
                     self.y,
                     self.width,
                     self.height,
-                    22
+                    dp(21.78)
                 ),
                 width=1
             )
@@ -93,8 +88,8 @@ class SettingsCard(ButtonBehavior, BoxLayout):
         icon_img = Image(
             source=icon_path,
             size_hint=(None, None),
-            width=dp(58),
-            height=dp(58),
+            width=dp(52.2),
+            height=dp(52.2),
             allow_stretch=True,
             keep_ratio=True,
             opacity=1
@@ -126,7 +121,7 @@ class SettingsCard(ButtonBehavior, BoxLayout):
             halign="left",
             valign="middle",
             size_hint_y=0.42,
-            text_size=(dp(255), None)
+            text_size=(dp(229.5), None)
         )
 
         text_box.add_widget(title_label)
