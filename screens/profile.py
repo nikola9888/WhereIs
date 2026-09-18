@@ -101,10 +101,14 @@ class ProfileScreen(Screen):
         ))
 
         self.name_input = self.create_input(
-            "Profile name",
-            theme.BACKGROUND_DARK
+            "Profile name"
         )
         card.add_widget(self.name_input)
+        self.add_input_background(
+            card,
+            self.name_input,
+            theme.BACKGROUND_DARK
+        )
 
         save = self.create_round_button(
             "Save profile",
@@ -130,10 +134,14 @@ class ProfileScreen(Screen):
         ))
 
         self.connection_input = self.create_input(
-            "Enter another Profile ID",
-            theme.CARD
+            "Enter another Profile ID"
         )
         root.add_widget(self.connection_input)
+        self.add_input_background(
+            root,
+            self.connection_input,
+            theme.CARD
+        )
 
         connect = self.create_round_button(
             "Add connection",
@@ -232,7 +240,7 @@ class ProfileScreen(Screen):
         button.bind(pos=update, size=update)
         return button
 
-    def create_input(self, hint, background):
+    def create_input(self, hint):
         box = TextInput(
             text=self.get_profile_name() if hint == "Profile name" else "",
             hint_text=hint,
@@ -248,21 +256,23 @@ class ProfileScreen(Screen):
             cursor_color=theme.PRIMARY,
             padding=[dp(12), dp(10)]
         )
+        return box
 
-        with box.canvas.before:
+    def add_input_background(self, parent, input_widget, background):
+        with parent.canvas.before:
             Color(*background)
-            box.bg_rect = RoundedRectangle(
-                pos=box.pos,
-                size=box.size,
+            rect = RoundedRectangle(
+                pos=input_widget.pos,
+                size=input_widget.size,
                 radius=[dp(16)]
             )
 
         def update_input(widget, *args):
-            widget.bg_rect.pos = widget.pos
-            widget.bg_rect.size = widget.size
+            rect.pos = widget.pos
+            rect.size = widget.size
 
-        box.bind(pos=update_input, size=update_input)
-        return box
+        input_widget.bind(pos=update_input, size=update_input)
+        update_input(input_widget)
 
     def get_profile_name(self):
         if self.store.exists("profile"):
