@@ -212,7 +212,7 @@ class SettingsScreen(Screen):
 
             color=theme.TEXT,
 
-            font_size=48
+            font_size=43.2
 
         )
 
