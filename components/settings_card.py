@@ -38,15 +38,15 @@ class SettingsCard(ButtonBehavior, BoxLayout):
         self.height = dp(94.5)
 
         with self.canvas.before:
-            Color(*CARD)
+            Color(*theme.CARD)
             self.bg = RoundedRectangle(
                 pos=self.pos,
                 size=self.size,
-                radius=[19.8]
+                radius=[dp(21.78)]
             )
 
         with self.canvas.after:
-            Color(*ITEM_BORDER)
+            Color(*theme.ITEM_BORDER)
             self.border = Line(
                 rounded_rectangle=(
                     self.x,
@@ -110,7 +110,7 @@ class SettingsCard(ButtonBehavior, BoxLayout):
 
         title_label = Label(
             text=title,
-            color=PRIMARY,
+            color=theme.PRIMARY,
             font_size=36,
             bold=True,
             halign="left",
@@ -121,7 +121,7 @@ class SettingsCard(ButtonBehavior, BoxLayout):
 
         subtitle_label = Label(
             text=subtitle,
-            color=TEXT_SECONDARY,
+            color=theme.TEXT_SECONDARY,
             font_size=30.6,
             halign="left",
             valign="middle",
