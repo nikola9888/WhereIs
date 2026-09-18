@@ -246,7 +246,7 @@ class AddItemScreen(Screen):
             orientation="horizontal",
             spacing=dp(18),
             size_hint=(None, 1),
-            width=dp(58) + dp(18) + dp(210) + dp(36)
+            width=dp(58) + dp(18) + dp(210)
         )
 
         icon = Image(
@@ -265,7 +265,7 @@ class AddItemScreen(Screen):
             halign="left",
             valign="middle",
             size_hint_x=None,
-            width=dp(210) + dp(36)
+            width=dp(210)
         )
         label.bind(size=lambda w, s: setattr(w, "text_size", s))
 
@@ -274,7 +274,7 @@ class AddItemScreen(Screen):
 
         def update_content(widget, *args):
             content.pos = (
-                widget.x + (widget.width - content.width) / 2,
+                widget.x + (widget.width - content.width) / 2 + widget.width * 0.10,
                 widget.y
             )
             content.height = widget.height
