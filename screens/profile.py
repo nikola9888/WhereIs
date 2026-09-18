@@ -242,8 +242,9 @@ class ProfileScreen(Screen):
             background_normal="",
             background_active="",
             background_color=(0, 0, 0, 0),
-            foreground_color=theme.TEXT,
+            foreground_color=theme.WHITE,
             hint_text_color=theme.TEXT_SECONDARY,
+            font_size=32,
             cursor_color=theme.PRIMARY,
             padding=[dp(12), dp(10)]
         )
