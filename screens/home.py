@@ -59,6 +59,14 @@ class HomeScreen(Screen):
         )
         root.add_widget(self.add_button)
 
+        self.receive_button = self.create_main_button(
+            "Receive",
+            theme.CARD,
+            self.open_receive,
+            None
+        )
+        root.add_widget(self.receive_button)
+
         self.profile_button = self.create_main_button(
             "Profile",
             theme.CARD,
@@ -231,6 +239,9 @@ class HomeScreen(Screen):
 
     def open_profile(self, instance):
         self.manager.current = "profile"
+
+    def open_receive(self, instance):
+        self.manager.current = "receive"
 
     def refresh(self):
         self.load_items()
