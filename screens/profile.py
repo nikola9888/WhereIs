@@ -100,29 +100,20 @@ class ProfileScreen(Screen):
             height=dp(75)
         ))
 
-        self.name_input = TextInput(
-            text=self.get_profile_name(),
-            hint_text="Profile name",
-            multiline=False,
-            size_hint_y=None,
-            height=dp(50),
-            background_normal="",
-            background_color=theme.BACKGROUND_DARK,
-            foreground_color=theme.TEXT,
-            cursor_color=theme.PRIMARY,
-            padding=[dp(12), dp(10)]
+        self.name_input = self.create_input(
+            "Profile name",
+            theme.BACKGROUND_DARK
         )
         card.add_widget(self.name_input)
 
-        save = Button(
-            text="Save profile",
-            size_hint_y=None,
-            height=dp(52),
-            background_normal="",
-            background_color=theme.PRIMARY,
-            color=theme.TEXT,
-            font_size=91.8,
-            bold=True
+        save = self.create_round_button(
+            "Save profile",
+            theme.PRIMARY,
+            theme.TEXT,
+            52,
+            22,
+            91.8,
+            True
         )
         save.bind(on_press=self.save_profile)
         card.add_widget(save)
@@ -138,28 +129,20 @@ class ProfileScreen(Screen):
             height=dp(80)
         ))
 
-        self.connection_input = TextInput(
-            hint_text="Enter another Profile ID",
-            multiline=False,
-            size_hint_y=None,
-            height=dp(50),
-            background_normal="",
-            background_color=theme.CARD,
-            foreground_color=theme.TEXT,
-            cursor_color=theme.PRIMARY,
-            padding=[dp(12), dp(10)]
+        self.connection_input = self.create_input(
+            "Enter another Profile ID",
+            theme.CARD
         )
         root.add_widget(self.connection_input)
 
-        connect = Button(
-            text="Add connection",
-            size_hint_y=None,
-            height=dp(52),
-            background_normal="",
-            background_color=theme.PRIMARY,
-            color=theme.TEXT,
-            font_size=91.8,
-            bold=True
+        connect = self.create_round_button(
+            "Add connection",
+            theme.PRIMARY,
+            theme.TEXT,
+            52,
+            22,
+            91.8,
+            True
         )
         connect.bind(on_press=self.add_connection)
         root.add_widget(connect)
@@ -173,23 +156,132 @@ class ProfileScreen(Screen):
             size_hint_y=None,
             height=dp(100)
         )
-        self.connections_label.bind(size=self.connections_label.setter("text_size"))
+        self.connections_label.bind(
+            size=self.connections_label.setter("text_size")
+        )
         root.add_widget(self.connections_label)
 
-        back = Button(
-            text=app.tr("back"),
-            size_hint_y=None,
-            height=dp(55),
-            background_normal="",
-            background_color=theme.CARD,
-            color=theme.TEXT,
-            font_size=107.1,
-            bold=True
+        back = self.create_round_button(
+            app.tr("back"),
+            theme.CARD,
+            theme.TEXT,
+            55,
+            22,
+            107.1,
+            True
         )
         back.bind(on_press=self.go_back)
         root.add_widget(back)
 
         self.add_widget(root)
+
+    def create_round_button(
+        self,
+        text,
+        background,
+        color,
+        height,
+        radius,
+        font_size,
+        bold=False
+    ):
+        button = Button(
+            text=text,
+            size_hint_y=None,
+            height=dp(height),
+            background_normal="",
+            background_down="",
+            background_color=(0, 0, 0, 0),
+            color=color,
+            font_size=font_size,
+            bold=bold
+        )
+
+        with button.canvas.before:
+            Color(*background)
+            button.bg_rect = RoundedRectangle(
+                pos=button.pos,
+                size=button.size,
+                radius=[dp(radius)]
+            )
+
+        with button.canvas.after:
+            Color(*theme.ITEM_BORDER)
+            button.border_line = Line(
+                rounded_rectangle=(
+                    button.x,
+                    button.y,
+                    button.width,
+                    button.height,
+                    dp(radius)
+                ),
+                width=1
+            )
+
+        def update(widget, *args):
+            widget.bg_rect.pos = widget.pos
+            widget.bg_rect.size = widget.size
+            widget.border_line.rounded_rectangle = (
+                widget.x,
+                widget.y,
+                widget.width,
+                widget.height,
+                dp(radius)
+            )
+
+        button.bind(pos=update, size=update)
+        return button
+
+    def create_input(self, hint, background):
+        box = TextInput(
+            text=self.get_profile_name() if hint == "Profile name" else "",
+            hint_text=hint,
+            multiline=False,
+            size_hint_y=None,
+            height=dp(50),
+            background_normal="",
+            background_active="",
+            background_color=(0, 0, 0, 0),
+            foreground_color=theme.TEXT,
+            hint_text_color=theme.TEXT_SECONDARY,
+            cursor_color=theme.PRIMARY,
+            padding=[dp(12), dp(10)]
+        )
+
+        with box.canvas.before:
+            Color(*background)
+            box.bg_rect = RoundedRectangle(
+                pos=box.pos,
+                size=box.size,
+                radius=[dp(16)]
+            )
+
+        with box.canvas.after:
+            Color(*theme.ITEM_BORDER)
+            box.border_line = Line(
+                rounded_rectangle=(
+                    box.x,
+                    box.y,
+                    box.width,
+                    box.height,
+                    dp(16)
+                ),
+                width=1
+            )
+
+        def update(widget, *args):
+            widget.bg_rect.pos = widget.pos
+            widget.bg_rect.size = widget.size
+            widget.border_line.rounded_rectangle = (
+                widget.x,
+                widget.y,
+                widget.width,
+                widget.height,
+                dp(16)
+            )
+
+        box.bind(pos=update, size=update)
+        return box
 
     def get_profile_name(self):
         if self.store.exists("profile"):
