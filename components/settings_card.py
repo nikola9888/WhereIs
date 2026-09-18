@@ -145,5 +145,5 @@ class SettingsCard(ButtonBehavior, BoxLayout):
             self.y,
             self.width,
             self.height,
-            22
+            dp(21.78)
         )
