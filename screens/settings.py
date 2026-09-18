@@ -208,13 +208,30 @@ class SettingsScreen(Screen):
 
             background_normal="",
 
-            background_color=theme.PRIMARY,
+            background_down="",
+
+            background_color=(0, 0, 0, 0),
 
             color=theme.TEXT,
 
-            font_size=43.2
+            font_size=48
 
         )
+
+        with back.canvas.before:
+            Color(*theme.PRIMARY)
+            back.bg_rect = RoundedRectangle(
+                pos=back.pos,
+                size=back.size,
+                radius=[dp(22)]
+            )
+
+        def update_back(widget, *args):
+            widget.bg_rect.pos = widget.pos
+            widget.bg_rect.size = widget.size
+
+        back.bind(pos=update_back, size=update_back)
+        update_back(back)
 
 
         back.bind(
