@@ -281,8 +281,11 @@ class ProfileScreen(Screen):
 
     def get_connections(self):
         if self.store.exists("connections"):
-            return self.store.get("connections").get("ids", [])
+            return list(self.store.get("connections").get("ids", []))
         return []
+
+    def save_connections(self, connections):
+        self.store.put("connections", ids=list(connections))
 
     def connections_text(self):
         connections = self.get_connections()
@@ -314,7 +317,7 @@ class ProfileScreen(Screen):
 
         if value not in connections:
             connections.append(value)
-            self.store.put("connections", ids=connections)
+            self.save_connections(connections)
 
         self.connection_input.text = ""
         self.connections_label.text = self.connections_text()
