@@ -506,11 +506,19 @@ class SettingsScreen(Screen):
             if BuildVersion.SDK_INT >= 29:
                 activity = PythonActivity.mActivity
                 resolver = activity.getContentResolver()
-                collection = Downloads.EXTERNAL_CONTENT_URI
+                # Query the shared MediaStore files collection instead of
+                # assuming the Downloads collection exposes the file.
+                collection = Files.getContentUri("external")
 
                 projection = [MediaColumns._ID]
-                selection = MediaColumns.DISPLAY_NAME + "=?"
-                selection_args = ["whereis_backup.db"]
+                selection = (
+                    MediaColumns.DISPLAY_NAME + "=? AND " +
+                    MediaColumns.RELATIVE_PATH + "=?"
+                )
+                selection_args = [
+                    "whereis_backup.db",
+                    "Download/"
+                ]
                 cursor = resolver.query(
                     collection,
                     projection,
