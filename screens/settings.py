@@ -439,9 +439,9 @@ class SettingsScreen(Screen):
             if BuildVersion.SDK_INT >= 29:
                 values.put(MediaColumns.RELATIVE_PATH, "Download")
                 values.put(MediaColumns.IS_PENDING, 1)
-                collection = MediaStore.Downloads.EXTERNAL_CONTENT_URI
+                collection = Downloads.EXTERNAL_CONTENT_URI
             else:
-                collection = MediaStore.Files.getContentUri("external")
+                collection = Files.getContentUri("external")
 
             uri = resolver.insert(collection, values)
 
@@ -455,7 +455,7 @@ class SettingsScreen(Screen):
                 output_stream.write(data)
                 output_stream.close()
 
-                if Build.VERSION.SDK_INT >= 29:
+                if BuildVersion.SDK_INT >= 29:
                     values = ContentValues()
                     values.put(MediaColumns.IS_PENDING, 0)
                     resolver.update(uri, values, None, None)
@@ -494,7 +494,10 @@ class SettingsScreen(Screen):
             from jnius import autoclass
 
             MediaStore = autoclass("android.provider.MediaStore")
-            Build = autoclass("android.os.Build")
+            MediaColumns = autoclass("android.provider.MediaStore$MediaColumns")
+            Downloads = autoclass("android.provider.MediaStore$Downloads")
+            Files = autoclass("android.provider.MediaStore$Files")
+            BuildVersion = autoclass("android.os.Build$VERSION")
             PythonActivity = autoclass("org.kivy.android.PythonActivity")
 
             if Build.VERSION.SDK_INT >= 29:
