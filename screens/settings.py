@@ -768,7 +768,13 @@ class SettingsScreen(Screen):
         )
 
         label = Label(
-            text=text
+            text=text,
+            color=theme.TEXT,
+            halign="center",
+            valign="middle"
+        )
+        label.bind(
+            size=label.setter("text_size")
         )
 
         button = Button(
@@ -780,7 +786,7 @@ class SettingsScreen(Screen):
         popup = Popup(
             title=title,
             content=content,
-            size_hint=(0.8, 0.35)
+            size_hint=(0.8, 0.45)
         )
 
         button.bind(
