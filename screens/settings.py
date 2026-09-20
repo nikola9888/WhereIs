@@ -426,6 +426,8 @@ class SettingsScreen(Screen):
             PythonActivity = autoclass("org.kivy.android.PythonActivity")
             MediaStore = autoclass("android.provider.MediaStore")
             MediaColumns = autoclass("android.provider.MediaStore$MediaColumns")
+            Downloads = autoclass("android.provider.MediaStore$Downloads")
+            Files = autoclass("android.provider.MediaStore$Files")
             ContentValues = autoclass("android.content.ContentValues")
             BuildVersion = autoclass("android.os.Build$VERSION")
 
@@ -500,10 +502,10 @@ class SettingsScreen(Screen):
             BuildVersion = autoclass("android.os.Build$VERSION")
             PythonActivity = autoclass("org.kivy.android.PythonActivity")
 
-            if Build.VERSION.SDK_INT >= 29:
+            if BuildVersion.SDK_INT >= 29:
                 activity = PythonActivity.mActivity
                 resolver = activity.getContentResolver()
-                collection = MediaStore.Downloads.EXTERNAL_CONTENT_URI
+                collection = Downloads.EXTERNAL_CONTENT_URI
 
                 projection = [MediaColumns._ID]
                 selection = MediaColumns.DISPLAY_NAME + "=?"
