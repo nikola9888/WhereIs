@@ -425,19 +425,20 @@ class SettingsScreen(Screen):
 
             PythonActivity = autoclass("org.kivy.android.PythonActivity")
             MediaStore = autoclass("android.provider.MediaStore")
+            MediaColumns = autoclass("android.provider.MediaStore$MediaColumns")
             ContentValues = autoclass("android.content.ContentValues")
-            Build = autoclass("android.os.Build")
+            BuildVersion = autoclass("android.os.Build$VERSION")
 
             activity = PythonActivity.mActivity
             resolver = activity.getContentResolver()
 
             values = ContentValues()
-            values.put(MediaStore.MediaColumns.DISPLAY_NAME, "whereis_backup.db")
-            values.put(MediaStore.MediaColumns.MIME_TYPE, "application/octet-stream")
+            values.put(MediaColumns.DISPLAY_NAME, "whereis_backup.db")
+            values.put(MediaColumns.MIME_TYPE, "application/octet-stream")
 
-            if Build.VERSION.SDK_INT >= 29:
-                values.put(MediaStore.MediaColumns.RELATIVE_PATH, "Download")
-                values.put(MediaStore.MediaColumns.IS_PENDING, 1)
+            if BuildVersion.SDK_INT >= 29:
+                values.put(MediaColumns.RELATIVE_PATH, "Download")
+                values.put(MediaColumns.IS_PENDING, 1)
                 collection = MediaStore.Downloads.EXTERNAL_CONTENT_URI
             else:
                 collection = MediaStore.Files.getContentUri("external")
@@ -456,7 +457,7 @@ class SettingsScreen(Screen):
 
                 if Build.VERSION.SDK_INT >= 29:
                     values = ContentValues()
-                    values.put(MediaStore.MediaColumns.IS_PENDING, 0)
+                    values.put(MediaColumns.IS_PENDING, 0)
                     resolver.update(uri, values, None, None)
 
             except Exception:
@@ -501,8 +502,8 @@ class SettingsScreen(Screen):
                 resolver = activity.getContentResolver()
                 collection = MediaStore.Downloads.EXTERNAL_CONTENT_URI
 
-                projection = [MediaStore.MediaColumns._ID]
-                selection = MediaStore.MediaColumns.DISPLAY_NAME + "=?"
+                projection = [MediaColumns._ID]
+                selection = MediaColumns.DISPLAY_NAME + "=?"
                 selection_args = ["whereis_backup.db"]
                 cursor = resolver.query(
                     collection,
@@ -522,7 +523,7 @@ class SettingsScreen(Screen):
                     return
 
                 column_index = cursor.getColumnIndexOrThrow(
-                    MediaStore.MediaColumns._ID
+                    MediaColumns._ID
                 )
                 file_id = cursor.getLong(column_index)
                 cursor.close()
