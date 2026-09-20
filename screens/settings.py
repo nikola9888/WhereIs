@@ -429,6 +429,7 @@ class SettingsScreen(Screen):
             Downloads = autoclass("android.provider.MediaStore$Downloads")
             Files = autoclass("android.provider.MediaStore$Files")
             ContentValues = autoclass("android.content.ContentValues")
+            JavaInteger = autoclass("java.lang.Integer")
             BuildVersion = autoclass("android.os.Build$VERSION")
 
             activity = PythonActivity.mActivity
@@ -440,7 +441,7 @@ class SettingsScreen(Screen):
 
             if BuildVersion.SDK_INT >= 29:
                 values.put(MediaColumns.RELATIVE_PATH, "Download")
-                values.put(MediaColumns.IS_PENDING, 1)
+                values.put(MediaColumns.IS_PENDING, JavaInteger(1))
                 collection = Downloads.EXTERNAL_CONTENT_URI
             else:
                 collection = Files.getContentUri("external")
@@ -459,7 +460,7 @@ class SettingsScreen(Screen):
 
                 if BuildVersion.SDK_INT >= 29:
                     values = ContentValues()
-                    values.put(MediaColumns.IS_PENDING, 0)
+                    values.put(MediaColumns.IS_PENDING, JavaInteger(0))
                     resolver.update(uri, values, None, None)
 
             except Exception:
