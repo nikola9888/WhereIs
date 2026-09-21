@@ -440,7 +440,7 @@ class SettingsScreen(Screen):
             values.put(MediaColumns.MIME_TYPE, "application/octet-stream")
 
             if BuildVersion.SDK_INT >= 29:
-                values.put(MediaColumns.RELATIVE_PATH, "Download")
+                values.put(MediaColumns.RELATIVE_PATH, "Download/")
                 values.put(MediaColumns.IS_PENDING, JavaInteger(1))
                 collection = Downloads.EXTERNAL_CONTENT_URI
             else:
@@ -517,11 +517,16 @@ class SettingsScreen(Screen):
                 collection = Downloads.EXTERNAL_CONTENT_URI
 
                 projection = [MediaColumns._ID]
+
+                # Match both the filename and the exact Downloads folder.
+                # RELATIVE_PATH is stored by Android with a trailing slash.
                 selection = (
-                    MediaColumns.DISPLAY_NAME + "=?"
+                    MediaColumns.DISPLAY_NAME + "=? AND " +
+                    MediaColumns.RELATIVE_PATH + "=?"
                 )
                 selection_args = [
-                    "whereis_backup.db"
+                    "whereis_backup.db",
+                    "Download/"
                 ]
 
                 cursor = resolver.query(
@@ -531,6 +536,27 @@ class SettingsScreen(Screen):
                     selection_args,
                     None
                 )
+
+                # Some Android versions expose Downloads through the
+                # generic external-files collection. If the Downloads
+                # collection returns nothing, try that collection too.
+                if cursor is None or not cursor.moveToFirst():
+
+                    if cursor is not None:
+                        cursor.close()
+
+                    Files = autoclass(
+                        "android.provider.MediaStore$Files"
+                    )
+                    collection = Files.getContentUri("external")
+
+                    cursor = resolver.query(
+                        collection,
+                        projection,
+                        selection,
+                        selection_args,
+                        None
+                    )
 
                 if cursor is None or not cursor.moveToFirst():
 
