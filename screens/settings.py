@@ -483,13 +483,10 @@ class SettingsScreen(Screen):
 
         app = App.get_running_app()
 
-        backup_file = "/storage/emulated/0/Download/whereis_backup.db"
-
         database_file = os.path.join(
             app.user_data_dir,
             "whereis.db"
         )
-
 
         try:
 
@@ -497,28 +494,36 @@ class SettingsScreen(Screen):
             from jnius import autoclass
 
             MediaStore = autoclass("android.provider.MediaStore")
-            MediaColumns = autoclass("android.provider.MediaStore$MediaColumns")
-            Downloads = autoclass("android.provider.MediaStore$Downloads")
-            Files = autoclass("android.provider.MediaStore$Files")
+            MediaColumns = autoclass(
+                "android.provider.MediaStore$MediaColumns"
+            )
+            Downloads = autoclass(
+                "android.provider.MediaStore$Downloads"
+            )
             BuildVersion = autoclass("android.os.Build$VERSION")
-            PythonActivity = autoclass("org.kivy.android.PythonActivity")
+            PythonActivity = autoclass(
+                "org.kivy.android.PythonActivity"
+            )
 
             if BuildVersion.SDK_INT >= 29:
+
                 activity = PythonActivity.mActivity
                 resolver = activity.getContentResolver()
-                # Query the shared MediaStore files collection instead of
-                # assuming the Downloads collection exposes the file.
-                collection = Files.getContentUri("external")
+
+                # The backup is created in MediaStore Downloads, so restore
+                # must query the same Downloads collection. Querying the
+                # generic Files collection can miss files inserted through
+                # MediaStore.Downloads on Android 10+.
+                collection = Downloads.EXTERNAL_CONTENT_URI
 
                 projection = [MediaColumns._ID]
                 selection = (
-                    MediaColumns.DISPLAY_NAME + "=? AND " +
-                    MediaColumns.RELATIVE_PATH + "=?"
+                    MediaColumns.DISPLAY_NAME + "=?"
                 )
                 selection_args = [
-                    "whereis_backup.db",
-                    "Download/"
+                    "whereis_backup.db"
                 ]
+
                 cursor = resolver.query(
                     collection,
                     projection,
@@ -528,8 +533,10 @@ class SettingsScreen(Screen):
                 )
 
                 if cursor is None or not cursor.moveToFirst():
+
                     if cursor is not None:
                         cursor.close()
+
                     self.show_message(
                         app.tr("restore_title"),
                         app.tr("restore_not_found")
@@ -543,23 +550,43 @@ class SettingsScreen(Screen):
                 cursor.close()
 
                 from android.net import Uri
+
                 uri = Uri.withAppendedPath(
                     collection,
                     str(file_id)
                 )
 
                 input_stream = resolver.openInputStream(uri)
+
+                if input_stream is None:
+                    raise IOError(
+                        "Could not open backup file"
+                    )
+
                 with open(database_file, "wb") as output_file:
+
                     buffer = bytearray(8192)
+
                     while True:
+
                         count = input_stream.read(buffer)
+
                         if count <= 0:
                             break
+
                         output_file.write(buffer[:count])
+
                 input_stream.close()
 
             else:
+
+                backup_file = (
+                    "/storage/emulated/0/Download/"
+                    "whereis_backup.db"
+                )
+
                 if not os.path.exists(backup_file):
+
                     self.show_message(
                         app.tr("restore_title"),
                         app.tr("restore_not_found")
@@ -585,7 +612,7 @@ class SettingsScreen(Screen):
                 app.tr("restore_error"),
                 str(e)
             )
- 
+
 
     def clear_data(self, instance):
 
