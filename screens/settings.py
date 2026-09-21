@@ -463,6 +463,15 @@ class SettingsScreen(Screen):
                     values.put(MediaColumns.IS_PENDING, JavaInteger(0))
                     resolver.update(uri, values, None, None)
 
+                # Keep the exact MediaStore URI that Android created.
+                # Restore can then reopen this file directly instead of
+                # trying to find it again by filename/path.
+                app.store.put(
+                    "backup",
+                    uri=str(uri),
+                    name="whereis_backup.db"
+                )
+
             except Exception:
                 resolver.delete(uri, None, None)
                 raise
@@ -489,6 +498,53 @@ class SettingsScreen(Screen):
         )
 
         try:
+
+            # First try the exact MediaStore URI saved when the backup
+            # was created. This is the most reliable method because Android
+            # may expose Downloads differently between devices/versions.
+            saved_uri = None
+            if app.store.exists("backup"):
+                try:
+                    saved_uri = app.store.get("backup").get("uri")
+                except Exception:
+                    saved_uri = None
+
+            if saved_uri:
+                try:
+                    from jnius import autoclass
+                    PythonActivity = autoclass(
+                        "org.kivy.android.PythonActivity"
+                    )
+                    Uri = autoclass("android.net.Uri")
+
+                    activity = PythonActivity.mActivity
+                    resolver = activity.getContentResolver()
+                    uri = Uri.parse(saved_uri)
+                    input_stream = resolver.openInputStream(uri)
+
+                    if input_stream is not None:
+                        with open(database_file, "wb") as output_file:
+                            buffer = bytearray(8192)
+                            while True:
+                                count = input_stream.read(buffer)
+                                if count <= 0:
+                                    break
+                                output_file.write(buffer[:count])
+
+                        input_stream.close()
+
+                        self.show_message(
+                            app.tr("restore_title"),
+                            app.tr("restore_success")
+                        )
+
+                        home = app.root.get_screen("home")
+                        home.load_items()
+                        return
+                except Exception:
+                    # If the saved URI is no longer valid, continue with the
+                    # existing MediaStore/file fallback below.
+                    pass
 
             # Android 10+ shared storage must be read through MediaStore.
             from jnius import autoclass
