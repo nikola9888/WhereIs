@@ -619,10 +619,7 @@ class SettingsScreen(Screen):
                     if cursor is not None:
                         cursor.close()
 
-                    self.show_message(
-                        app.tr("restore_title"),
-                        app.tr("restore_not_found")
-                    )
+                    self.open_restore_file_picker()
                     return
 
                 column_index = cursor.getColumnIndexOrThrow(
@@ -669,10 +666,7 @@ class SettingsScreen(Screen):
 
                 if not os.path.exists(backup_file):
 
-                    self.show_message(
-                        app.tr("restore_title"),
-                        app.tr("restore_not_found")
-                    )
+                    self.open_restore_file_picker()
                     return
 
                 shutil.copy2(
@@ -690,6 +684,114 @@ class SettingsScreen(Screen):
 
         except Exception as e:
 
+            self.show_message(
+                app.tr("restore_error"),
+                str(e)
+            )
+
+
+    RESTORE_REQUEST_CODE = 301
+
+    def open_restore_file_picker(self):
+        try:
+            from jnius import autoclass
+
+            PythonActivity = autoclass(
+                "org.kivy.android.PythonActivity"
+            )
+            Intent = autoclass(
+                "android.content.Intent"
+            )
+
+            intent = Intent(Intent.ACTION_OPEN_DOCUMENT)
+            intent.addCategory(Intent.CATEGORY_OPENABLE)
+            intent.setType("*/*")
+
+            PythonActivity.mActivity.startActivityForResult(
+                intent,
+                self.RESTORE_REQUEST_CODE
+            )
+
+        except Exception as e:
+            self.show_message(
+                App.get_running_app().tr("restore_error"),
+                str(e)
+            )
+
+    def on_restore_result(
+        self,
+        request_code,
+        result_code,
+        intent
+    ):
+        if request_code != self.RESTORE_REQUEST_CODE:
+            return
+
+        if result_code != -1 or intent is None:
+            return
+
+        try:
+            app = App.get_running_app()
+            uri = intent.getData()
+
+            if uri is None:
+                raise IOError("No backup file selected")
+
+            PythonActivity = __import__(
+                "jnius"
+            ).autoclass(
+                "org.kivy.android.PythonActivity"
+            )
+
+            activity = PythonActivity.mActivity
+            resolver = activity.getContentResolver()
+            input_stream = resolver.openInputStream(uri)
+
+            if input_stream is None:
+                raise IOError("Could not open selected backup file")
+
+            database_file = os.path.join(
+                app.user_data_dir,
+                "whereis.db"
+            )
+
+            home = app.root.get_screen("home")
+
+            try:
+                home.db.close()
+            except Exception:
+                pass
+
+            with open(database_file, "wb") as output_file:
+                buffer = bytearray(8192)
+
+                while True:
+                    count = input_stream.read(buffer)
+
+                    if count <= 0:
+                        break
+
+                    output_file.write(buffer[:count])
+
+            input_stream.close()
+
+            # Reopen the database connection after replacing the file.
+            home.db = Database()
+
+            app.store.put(
+                "backup",
+                uri=str(uri),
+                name="whereis_backup.db"
+            )
+
+            self.show_message(
+                app.tr("restore_title"),
+                app.tr("restore_success")
+            )
+
+            home.load_items()
+
+        except Exception as e:
             self.show_message(
                 app.tr("restore_error"),
                 str(e)
