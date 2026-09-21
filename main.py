@@ -72,6 +72,15 @@ class WhereIsApp(App):
             if not self.root:
                 return
 
+            if request_code == SettingsScreen.RESTORE_REQUEST_CODE:
+                screen = self.root.get_screen("settings")
+                screen.on_restore_result(
+                    request_code,
+                    result_code,
+                    intent
+                )
+                return
+
             screen = self.root.get_screen("add_item")
 
             screen.on_activity_result(
