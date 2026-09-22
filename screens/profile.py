@@ -11,6 +11,8 @@ from kivy.uix.screenmanager import Screen
 from kivy.uix.textinput import TextInput
 from kivy.graphics import Color, RoundedRectangle, Line
 
+from database import Database
+
 
 class ProfileScreen(Screen):
 
@@ -19,6 +21,7 @@ class ProfileScreen(Screen):
 
         self.store = JsonStore("profile.json")
         self.profile_id = self.get_profile_id()
+        self.db = Database()
         self.build_ui()
 
     def get_profile_id(self):
@@ -280,18 +283,29 @@ class ProfileScreen(Screen):
         return ""
 
     def get_connections(self):
-        if self.store.exists("connections"):
-            return list(self.store.get("connections").get("ids", []))
-        return []
+        connections = self.db.get_connections()
 
-    def save_connections(self, connections):
-        self.store.put("connections", ids=list(connections))
+        if not connections and self.store.exists("connections"):
+            legacy = list(
+                self.store.get("connections").get("ids", [])
+            )
+            for value in legacy:
+                self.db.add_connection(value)
+
+            connections = self.db.get_connections()
+
+        return connections
 
     def connections_text(self):
         connections = self.get_connections()
+
         if not connections:
             return "No connected profiles yet."
-        return "\n".join("• " + value for value in connections)
+
+        return "\n".join(
+            "• " + row[0] + ((" - " + row[1]) if row[1] else "")
+            for row in connections
+        )
 
     def save_profile(self, instance):
         # The Profile ID is permanent. Only the profile name can change.
@@ -314,10 +328,10 @@ class ProfileScreen(Screen):
             return
 
         connections = self.get_connections()
+        existing = [row[0] for row in connections]
 
-        if value not in connections:
-            connections.append(value)
-            self.save_connections(connections)
+        if value not in existing:
+            self.db.add_connection(value)
 
         self.connection_input.text = ""
         self.connections_label.text = self.connections_text()
