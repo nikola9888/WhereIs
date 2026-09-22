@@ -1,4 +1,5 @@
 import os
+import uuid
 import theme
 from kivy.uix.screenmanager import Screen
 from kivy.uix.boxlayout import BoxLayout
@@ -8,6 +9,7 @@ from kivy.uix.button import Button
 from kivy.uix.scrollview import ScrollView
 from kivy.uix.popup import Popup
 from kivy.app import App
+from kivy.storage.jsonstore import JsonStore
 from kivy.metrics import dp
 from kivy.graphics import Color, RoundedRectangle, Line
 
@@ -420,6 +422,12 @@ class DetailScreen(Screen):
 
 
         self.create_button(
+            "Send Item",
+            theme.PRIMARY,
+            self.open_send_popup
+        )
+
+        self.create_button(
             app.tr("delete_item"),
             theme.DANGER,
             self.delete_item
@@ -533,6 +541,169 @@ class DetailScreen(Screen):
 
 
 
+
+    def get_profile_id(self):
+        store = JsonStore("profile.json")
+
+        if store.exists("profile"):
+            profile = store.get("profile")
+            return profile.get("id", "")
+
+        return ""
+
+    def open_send_popup(self, instance):
+        app = App.get_running_app()
+        connections = self.db.get_connections()
+
+        if not connections:
+            box = BoxLayout(
+                orientation="vertical",
+                spacing=dp(10),
+                padding=dp(15)
+            )
+
+            box.add_widget(Label(
+                text="No connected profiles yet.",
+                color=theme.TEXT,
+                font_size=32
+            ))
+
+            close = Button(
+                text=app.tr("close"),
+                size_hint_y=None,
+                height=dp(55)
+            )
+            box.add_widget(close)
+
+            popup = Popup(
+                title="Send Item",
+                content=box,
+                size_hint=(0.85, 0.35)
+            )
+            close.bind(on_press=popup.dismiss)
+            popup.open()
+            return
+
+        box = BoxLayout(
+            orientation="vertical",
+            spacing=dp(10),
+            padding=dp(15)
+        )
+
+        popup = Popup(
+            title="Send Item",
+            content=box,
+            size_hint=(0.85, 0.65)
+        )
+
+        for profile_id, name, created_at in connections:
+            text = profile_id
+            if name:
+                text += " - " + name
+
+            button = Button(
+                text=text,
+                size_hint_y=None,
+                height=dp(58),
+                background_color=theme.PRIMARY,
+                color=theme.TEXT,
+                font_size=30
+            )
+
+            button.bind(
+                on_press=lambda btn, pid=profile_id:
+                self.send_item_to(pid, popup)
+            )
+
+            box.add_widget(button)
+
+        cancel = Button(
+            text=app.tr("cancel"),
+            size_hint_y=None,
+            height=dp(55)
+        )
+        cancel.bind(on_press=popup.dismiss)
+        box.add_widget(cancel)
+
+        popup.open()
+
+    def send_item_to(self, recipient_profile_id, popup):
+        if not self.item_id:
+            popup.dismiss()
+            return
+
+        item = self.db.get_item(self.item_id)
+
+        if not item:
+            popup.dismiss()
+            return
+
+        (
+            item_id,
+            name,
+            category_id,
+            location,
+            description,
+            image_path,
+            created,
+            updated
+        ) = item
+
+        sender_profile_id = self.get_profile_id()
+
+        if not sender_profile_id:
+            popup.dismiss()
+            return
+
+        transfer_id = uuid.uuid4().hex
+
+        self.db.create_item_transfer(
+            transfer_id,
+            item_id,
+            sender_profile_id,
+            recipient_profile_id,
+            name,
+            category_id,
+            location,
+            description,
+            image_path
+        )
+
+        popup.dismiss()
+
+        self.show_message(
+            "Item",
+            "Item added to the sending queue."
+        )
+
+    def show_message(self, title, message):
+        box = BoxLayout(
+            orientation="vertical",
+            spacing=dp(10),
+            padding=dp(15)
+        )
+
+        box.add_widget(Label(
+            text=message,
+            color=theme.TEXT,
+            font_size=30
+        ))
+
+        close = Button(
+            text=App.get_running_app().tr("ok"),
+            size_hint_y=None,
+            height=dp(55)
+        )
+        box.add_widget(close)
+
+        popup = Popup(
+            title=title,
+            content=box,
+            size_hint=(0.85, 0.35)
+        )
+
+        close.bind(on_press=popup.dismiss)
+        popup.open()
 
     # =========================
     # DELETE
