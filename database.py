@@ -122,6 +122,33 @@ class Database:
 
 
         self.cursor.execute("""
+        CREATE TABLE IF NOT EXISTS connections(
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            profile_id TEXT UNIQUE NOT NULL,
+            name TEXT DEFAULT '',
+            created_at TEXT DEFAULT CURRENT_TIMESTAMP
+        )
+        """)
+
+        self.cursor.execute("""
+        CREATE TABLE IF NOT EXISTS item_transfers(
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            transfer_id TEXT UNIQUE NOT NULL,
+            item_id INTEGER,
+            sender_profile_id TEXT NOT NULL,
+            recipient_profile_id TEXT NOT NULL,
+            name TEXT NOT NULL,
+            category_id INTEGER,
+            location TEXT,
+            description TEXT,
+            image_path TEXT DEFAULT '',
+            status TEXT DEFAULT 'sent',
+            created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+            received_at TEXT
+        )
+        """)
+
+        self.cursor.execute("""
         CREATE TABLE IF NOT EXISTS item_history(
 
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -594,6 +621,92 @@ class Database:
 
 
     # =================================================
+    # =================================================
+    # CONNECTIONS
+    # =================================================
+
+    def add_connection(self, profile_id, name=""):
+        profile_id = (profile_id or "").strip().upper()
+        if not profile_id:
+            return None
+        self.cursor.execute(
+            "INSERT OR IGNORE INTO connections (profile_id, name) VALUES (?, ?)",
+            (profile_id, name or "")
+        )
+        self.conn.commit()
+        return profile_id
+
+    def get_connections(self):
+        self.cursor.execute(
+            "SELECT profile_id, name, created_at FROM connections ORDER BY id DESC"
+        )
+        return [tuple(row) for row in self.cursor.fetchall()]
+
+    def remove_connection(self, profile_id):
+        self.cursor.execute(
+            "DELETE FROM connections WHERE profile_id=?",
+            ((profile_id or "").strip().upper(),)
+        )
+        self.conn.commit()
+
+    # =================================================
+    # ITEM TRANSFERS
+    # =================================================
+
+    def create_item_transfer(
+        self, transfer_id, item_id, sender_profile_id,
+        recipient_profile_id, name, category_id, location,
+        description, image_path
+    ):
+        self.cursor.execute(
+            """
+            INSERT INTO item_transfers(
+                transfer_id, item_id, sender_profile_id,
+                recipient_profile_id, name, category_id,
+                location, description, image_path, status
+            )
+            VALUES(?,?,?,?,?,?,?,?,?,?)
+            """,
+            (
+                transfer_id, item_id, sender_profile_id,
+                recipient_profile_id, name, category_id,
+                location or "", description or "", image_path or "",
+                "sent"
+            )
+        )
+        self.conn.commit()
+
+    def get_sent_transfers(self):
+        self.cursor.execute(
+            "SELECT * FROM item_transfers WHERE status='sent' ORDER BY id DESC"
+        )
+        return [tuple(row) for row in self.cursor.fetchall()]
+
+    def get_received_transfers(self):
+        self.cursor.execute(
+            "SELECT * FROM item_transfers WHERE status='received' ORDER BY id DESC"
+        )
+        return [tuple(row) for row in self.cursor.fetchall()]
+
+    def mark_transfer_received(self, transfer_id):
+        self.cursor.execute(
+            """
+            UPDATE item_transfers
+            SET status='received', received_at=CURRENT_TIMESTAMP
+            WHERE transfer_id=?
+            """,
+            (transfer_id,)
+        )
+        self.conn.commit()
+
+    def get_transfer(self, transfer_id):
+        self.cursor.execute(
+            "SELECT * FROM item_transfers WHERE transfer_id=?",
+            (transfer_id,)
+        )
+        row = self.cursor.fetchone()
+        return tuple(row) if row else None
+
     # CLOSE
     # =================================================
 
