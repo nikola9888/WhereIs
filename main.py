@@ -1,6 +1,7 @@
 from kivy.app import App
 from kivy.uix.screenmanager import ScreenManager, FadeTransition
 from kivy.storage.jsonstore import JsonStore
+from kivy.clock import Clock
 
 from theme_manager import ThemeManager
 from translations import translations
@@ -73,11 +74,18 @@ class WhereIsApp(App):
                 return
 
             if request_code == SettingsScreen.RESTORE_REQUEST_CODE:
-                screen = self.root.get_screen("settings")
-                screen.on_restore_result(
-                    request_code,
-                    result_code,
-                    intent
+                # Android returns from the file picker outside the normal
+                # Kivy event cycle. Schedule the restore on Kivy's main
+                # thread so database/UI work cannot crash the Activity.
+                Clock.schedule_once(
+                    lambda dt: self.root.get_screen(
+                        "settings"
+                    ).on_restore_result(
+                        request_code,
+                        result_code,
+                        intent
+                    ),
+                    0
                 )
                 return
 
