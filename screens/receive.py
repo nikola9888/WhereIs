@@ -4,17 +4,23 @@ from kivy.uix.screenmanager import Screen
 from kivy.uix.boxlayout import BoxLayout
 from kivy.uix.button import Button
 from kivy.uix.label import Label
+from kivy.uix.scrollview import ScrollView
 from kivy.uix.image import Image
 from kivy.graphics import Color, RoundedRectangle, Line
 
 import theme
 from components.icons import get_icon, EMPTY
+from database import Database
 
 
 class ReceiveScreen(Screen):
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
+        self.db = Database()
+        self.build_ui()
+
+    def on_enter(self):
         self.build_ui()
 
     def build_ui(self):
@@ -46,58 +52,163 @@ class ReceiveScreen(Screen):
         )
         root.add_widget(title)
 
-        empty_card = BoxLayout(
-            orientation="vertical",
-            spacing=dp(10),
-            padding=dp(18),
-            size_hint_y=None,
-            height=dp(230)
-        )
+        received = self.db.get_received_transfers()
 
-        with empty_card.canvas.before:
-            Color(*theme.CARD)
-            empty_card.bg = RoundedRectangle(
-                pos=empty_card.pos,
-                size=empty_card.size,
-                radius=[dp(22)]
+        if not received:
+            empty_card = BoxLayout(
+                orientation="vertical",
+                spacing=dp(10),
+                padding=dp(18),
+                size_hint_y=None,
+                height=dp(230)
             )
 
-        with empty_card.canvas.after:
-            Color(*theme.ITEM_BORDER)
-            empty_card.border = Line(
-                rounded_rectangle=(
-                    empty_card.x,
-                    empty_card.y,
-                    empty_card.width,
-                    empty_card.height,
-                    dp(22)
-                ),
-                width=1.2
+            with empty_card.canvas.before:
+                Color(*theme.CARD)
+                empty_card.bg = RoundedRectangle(
+                    pos=empty_card.pos,
+                    size=empty_card.size,
+                    radius=[dp(22)]
+                )
+
+            with empty_card.canvas.after:
+                Color(*theme.ITEM_BORDER)
+                empty_card.border = Line(
+                    rounded_rectangle=(
+                        empty_card.x,
+                        empty_card.y,
+                        empty_card.width,
+                        empty_card.height,
+                        dp(22)
+                    ),
+                    width=1.2
+                )
+
+            empty_card.bind(
+                pos=self.update_card,
+                size=self.update_card
             )
 
-        empty_card.bind(
-            pos=self.update_card,
-            size=self.update_card
-        )
+            empty_card.add_widget(Image(
+                source=get_icon(EMPTY),
+                size_hint_y=None,
+                height=dp(90),
+                allow_stretch=True,
+                keep_ratio=True
+            ))
 
-        empty_card.add_widget(Image(
-            source=get_icon(EMPTY),
-            size_hint_y=None,
-            height=dp(90),
-            allow_stretch=True,
-            keep_ratio=True
-        ))
+            empty_card.add_widget(Label(
+                text="Trenutno nema primljenih itema.",
+                color=theme.TEXT_SECONDARY,
+                font_size=30,
+                bold=True,
+                halign="center",
+                valign="middle"
+            ))
 
-        empty_card.add_widget(Label(
-            text="Currently there are no received items.",
-            color=theme.TEXT_SECONDARY,
-            font_size=30,
-            bold=True,
-            halign="center",
-            valign="middle"
-        ))
+            root.add_widget(empty_card)
 
-        root.add_widget(empty_card)
+        else:
+            scroll = ScrollView(
+                do_scroll_x=False
+            )
+
+            items_box = BoxLayout(
+                orientation="vertical",
+                spacing=dp(12),
+                size_hint_y=None
+            )
+            items_box.bind(
+                minimum_height=items_box.setter("height")
+            )
+
+            for transfer in received:
+                (
+                    transfer_db_id,
+                    transfer_id,
+                    item_id,
+                    sender_profile_id,
+                    recipient_profile_id,
+                    name,
+                    category_id,
+                    location,
+                    description,
+                    image_path,
+                    status,
+                    created_at,
+                    received_at
+                ) = transfer
+
+                card = BoxLayout(
+                    orientation="vertical",
+                    spacing=dp(8),
+                    padding=dp(15),
+                    size_hint_y=None,
+                    height=dp(220)
+                )
+
+                with card.canvas.before:
+                    Color(*theme.CARD)
+                    card.bg = RoundedRectangle(
+                        pos=card.pos,
+                        size=card.size,
+                        radius=[dp(22)]
+                    )
+
+                with card.canvas.after:
+                    Color(*theme.ITEM_BORDER)
+                    card.border = Line(
+                        rounded_rectangle=(
+                            card.x,
+                            card.y,
+                            card.width,
+                            card.height,
+                            dp(22)
+                        ),
+                        width=1.2
+                    )
+
+                card.bind(
+                    pos=self.update_card,
+                    size=self.update_card
+                )
+
+                if image_path:
+                    import os
+                    if os.path.exists(image_path):
+                        card.add_widget(Image(
+                            source=image_path,
+                            size_hint_y=None,
+                            height=dp(90),
+                            allow_stretch=True,
+                            keep_ratio=True
+                        ))
+
+                card.add_widget(Label(
+                    text=name,
+                    color=theme.PRIMARY,
+                    font_size=38,
+                    bold=True,
+                    size_hint_y=None,
+                    height=dp(48)
+                ))
+
+                card.add_widget(Label(
+                    text=(
+                        "From: " + sender_profile_id +
+                        "\nLocation: " + (location or "-") +
+                        "\n" + (description or "-")
+                    ),
+                    color=theme.TEXT,
+                    font_size=28,
+                    halign="left",
+                    valign="middle"
+                ))
+
+                items_box.add_widget(card)
+
+            scroll.add_widget(items_box)
+            root.add_widget(scroll)
 
         root.add_widget(BoxLayout())
 
