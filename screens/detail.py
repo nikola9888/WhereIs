@@ -15,6 +15,7 @@ from kivy.graphics import Color, RoundedRectangle, Line
 
 
 from database import Database
+from supabase_client import SupabaseClient
 
 
 from components.icons import (
@@ -36,6 +37,7 @@ class DetailScreen(Screen):
 
 
         self.db = Database()
+        self.supabase = SupabaseClient()
 
         self.item_id = None
 
@@ -628,6 +630,7 @@ class DetailScreen(Screen):
         popup.open()
 
     def send_item_to(self, recipient_profile_id, popup):
+
         if not self.item_id:
             popup.dismiss()
             return
@@ -655,25 +658,62 @@ class DetailScreen(Screen):
             popup.dismiss()
             return
 
-        transfer_id = uuid.uuid4().hex
+        category = "Other"
 
-        self.db.create_item_transfer(
-            transfer_id,
-            item_id,
-            sender_profile_id,
-            recipient_profile_id,
-            name,
-            category_id,
-            location,
-            description,
-            image_path
-        )
+        for cat in self.db.get_categories():
+            if cat[0] == category_id:
+                category = cat[1]
+                break
+
+        transfer_id = uuid.uuid4().hex
+        remote_path = ""
+
+        try:
+            if image_path and os.path.isfile(image_path):
+                extension = os.path.splitext(image_path)[1].lower() or ".jpg"
+                remote_path = transfer_id + extension
+                self.supabase.upload_file(
+                    image_path,
+                    remote_path
+                )
+
+            self.supabase.create_transfer(
+                transfer_id,
+                sender_profile_id,
+                recipient_profile_id,
+                name,
+                category,
+                location,
+                description,
+                remote_path
+            )
+
+            self.db.create_item_transfer(
+                transfer_id,
+                item_id,
+                sender_profile_id,
+                recipient_profile_id,
+                name,
+                category_id,
+                location,
+                description,
+                remote_path
+            )
+
+        except Exception as e:
+            print("SUPABASE SEND ERROR:", repr(e))
+            popup.dismiss()
+            self.show_message(
+                "Send Item",
+                "Item could not be sent. Check your internet connection."
+            )
+            return
 
         popup.dismiss()
 
         self.show_message(
             "Item",
-            "Item added to the sending queue."
+            "Item sent successfully."
         )
 
     def show_message(self, title, message):
