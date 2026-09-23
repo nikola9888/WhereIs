@@ -127,7 +127,6 @@ class SupabaseClient:
             },
             json={
                 "status": "received",
-                "received_at": "now()",
             },
             timeout=TIMEOUT,
         )
