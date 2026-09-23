@@ -293,6 +293,29 @@ class Database:
         return self.cursor.fetchall()
 
 
+    def get_or_create_category(self, name):
+
+        name = (name or "Other").strip()
+
+        self.cursor.execute(
+            "SELECT id FROM categories WHERE name=?",
+            (name,)
+        )
+
+        row = self.cursor.fetchone()
+
+        if row:
+            return row["id"]
+
+        self.cursor.execute(
+            "INSERT INTO categories (name, icon) VALUES (?, ?)",
+            (name, "📦")
+        )
+
+        self.conn.commit()
+        return self.cursor.lastrowid
+
+
 
     # =================================================
     # ADD ITEM
