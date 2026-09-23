@@ -20,10 +20,22 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Fix CA certificates and Git SSL
+        run: |
+          set -e
+          apt-get update
+          apt-get install -y ca-certificates
+          update-ca-certificates
+          git config --global http.sslVerify true
+          git config --global http.version HTTP/1.1
+          python3 -m pip install --upgrade pip certifi
+          export SSL_CERT_FILE="$(python3 -c 'import certifi; print(certifi.where())')"
+          echo "SSL_CERT_FILE=$SSL_CERT_FILE" >> "$GITHUB_ENV"
+          echo "GIT_SSL_CAINFO=$SSL_CERT_FILE" >> "$GITHUB_ENV"
+
       - name: Install current Buildozer toolchain
         run: |
           set -e
-          python3 -m pip install --upgrade pip
           python3 -m pip install --no-cache-dir \
             git+https://github.com/kivy/buildozer.git \
             legacy-cgi \
@@ -36,6 +48,7 @@ jobs:
           ls -la
           test -f buildozer.spec
           test -f main.py
+          grep -E '^requirements\s*=' buildozer.spec
 
       - name: Prepare clean build
         run: |
@@ -79,6 +92,8 @@ jobs:
           set -e
           echo "=== Build configuration ==="
           grep -E '^(android\.api|android\.minapi|android\.ndk|android\.release_artifact|p4a\.branch|p4a\.python_version)' buildozer.spec
+          echo "=== Requirements ==="
+          grep -E '^requirements\s*=' buildozer.spec
           echo "=== Building Android debug APK ==="
           yes | buildozer -v android debug
 
