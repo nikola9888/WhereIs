@@ -6,11 +6,14 @@ from kivy.uix.button import Button
 from kivy.uix.label import Label
 from kivy.uix.scrollview import ScrollView
 from kivy.uix.image import Image
+from kivy.storage.jsonstore import JsonStore
 from kivy.graphics import Color, RoundedRectangle, Line
 
 import theme
+import os
 from components.icons import get_icon, EMPTY
 from database import Database
+from supabase_client import SupabaseClient
 
 
 class ReceiveScreen(Screen):
@@ -18,9 +21,86 @@ class ReceiveScreen(Screen):
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         self.db = Database()
+        self.supabase = SupabaseClient()
         self.build_ui()
 
+    def get_profile_id(self):
+        store = JsonStore("profile.json")
+        if store.exists("profile"):
+            return store.get("profile").get("id", "")
+        return ""
+
+    def sync_cloud_transfers(self):
+        profile_id = self.get_profile_id()
+        if not profile_id:
+            return
+
+        try:
+            transfers = self.supabase.get_pending_transfers(profile_id)
+        except Exception as e:
+            print("SUPABASE RECEIVE FETCH ERROR:", repr(e))
+            return
+
+        for transfer in transfers:
+            transfer_id = transfer.get("transfer_id", "")
+            if not transfer_id:
+                continue
+
+            if self.db.get_transfer(transfer_id):
+                try:
+                    self.supabase.mark_transfer_received(transfer_id)
+                except Exception as e:
+                    print("SUPABASE RECEIVE MARK ERROR:", repr(e))
+                continue
+
+            name = transfer.get("name", "")
+            category = transfer.get("category", "Other")
+            location = transfer.get("location", "")
+            description = transfer.get("description", "")
+            remote_path = transfer.get("image_path", "") or ""
+            local_image = ""
+
+            try:
+                if remote_path:
+                    extension = os.path.splitext(remote_path)[1] or ".jpg"
+                    local_image = os.path.join(
+                        App.get_running_app().user_data_dir,
+                        "received_" + transfer_id + extension
+                    )
+                    self.supabase.download_file(
+                        remote_path,
+                        local_image
+                    )
+
+                category_id = self.db.get_or_create_category(category)
+                item_id = self.db.add_item(
+                    name,
+                    category_id,
+                    location,
+                    description,
+                    local_image
+                )
+
+                self.db.create_item_transfer(
+                    transfer_id,
+                    None,
+                    transfer.get("sender_profile_id", ""),
+                    profile_id,
+                    name,
+                    category_id,
+                    location,
+                    description,
+                    local_image
+                )
+                self.db.mark_transfer_received(transfer_id)
+
+                self.supabase.mark_transfer_received(transfer_id)
+
+            except Exception as e:
+                print("SUPABASE RECEIVE PROCESS ERROR:", repr(e))
+
     def on_enter(self):
+        self.sync_cloud_transfers()
         self.build_ui()
 
     def build_ui(self):
