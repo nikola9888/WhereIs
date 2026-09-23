@@ -12,6 +12,7 @@ from kivy.uix.textinput import TextInput
 from kivy.graphics import Color, RoundedRectangle, Line
 
 from database import Database
+from supabase_client import SupabaseClient
 
 
 class ProfileScreen(Screen):
@@ -22,7 +23,17 @@ class ProfileScreen(Screen):
         self.store = JsonStore("profile.json")
         self.profile_id = self.get_profile_id()
         self.db = Database()
+        self.supabase = SupabaseClient()
         self.build_ui()
+
+    def on_enter(self):
+        try:
+            self.supabase.upsert_profile(
+                self.profile_id,
+                self.get_profile_name()
+            )
+        except Exception as e:
+            print("SUPABASE PROFILE SYNC ERROR:", repr(e))
 
     def get_profile_id(self):
         if self.store.exists("profile"):
@@ -316,6 +327,14 @@ class ProfileScreen(Screen):
             id=self.profile_id,
             name=profile_name
         )
+
+        try:
+            self.supabase.upsert_profile(
+                self.profile_id,
+                profile_name
+            )
+        except Exception as e:
+            print("SUPABASE PROFILE UPDATE ERROR:", repr(e))
 
         # Reload the stored value so the screen always uses the persisted ID.
         stored_profile = self.store.get("profile")
