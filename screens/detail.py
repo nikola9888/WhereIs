@@ -665,7 +665,7 @@ class DetailScreen(Screen):
                 category = cat[1]
                 break
 
-        transfer_id = uuid.uuid4().hex
+        transfer_id = str(uuid.uuid4())
         remote_path = ""
 
         try:
