@@ -22,6 +22,17 @@ class SupabaseClient:
         headers["Content-Type"] = "application/json"
         return headers
 
+    def _raise_for_status(self, response, action):
+        if response.ok:
+            return
+        try:
+            details = response.json()
+        except Exception:
+            details = response.text
+        raise RuntimeError(
+            f"{action} failed: HTTP {response.status_code}: {details}"
+        )
+
     def upsert_profile(self, profile_id, name=""):
         response = requests.post(
             SUPABASE_REST_URL + "/profiles",
@@ -35,7 +46,7 @@ class SupabaseClient:
             },
             timeout=TIMEOUT,
         )
-        response.raise_for_status()
+        self._raise_for_status(response, "Profile sync")
 
     def upload_file(self, local_path, remote_path):
         with open(local_path, "rb") as file:
@@ -51,7 +62,7 @@ class SupabaseClient:
             data=data,
             timeout=TIMEOUT,
         )
-        response.raise_for_status()
+        self._raise_for_status(response, "Image upload")
         return remote_path
 
     def download_file(self, remote_path, local_path):
@@ -60,7 +71,7 @@ class SupabaseClient:
             headers=self.headers,
             timeout=TIMEOUT,
         )
-        response.raise_for_status()
+        self._raise_for_status(response, "Image download")
 
         os.makedirs(os.path.dirname(local_path), exist_ok=True)
 
@@ -99,7 +110,7 @@ class SupabaseClient:
             },
             timeout=TIMEOUT,
         )
-        response.raise_for_status()
+        self._raise_for_status(response, "Transfer creation")
 
     def get_pending_transfers(self, recipient_profile_id):
         response = requests.get(
@@ -112,7 +123,7 @@ class SupabaseClient:
             },
             timeout=TIMEOUT,
         )
-        response.raise_for_status()
+        self._raise_for_status(response, "Transfer sync")
         return response.json()
 
     def mark_transfer_received(self, transfer_id):
@@ -130,4 +141,4 @@ class SupabaseClient:
             },
             timeout=TIMEOUT,
         )
-        response.raise_for_status()
+        self._raise_for_status(response, "Transfer update")
