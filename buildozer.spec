@@ -8,8 +8,8 @@ package.domain = com.develop4world
 source.dir = .
 source.include_exts = py,png,jpg,jpeg,webp,kv,json,atlas,ttf
 
-version = 1.0.0
-android.numeric_version = 100001
+version = 1.0.1
+android.numeric_version = 100002
 
 requirements = python3==3.10.11,hostpython3==3.10.11,kivy,pyjnius,pillow,requests
 
@@ -31,6 +31,7 @@ android.minapi = 24
 android.accept_sdk_license = True
 android.ndk = 28c
 android.archs = arm64-v8a
+android.permissions = INTERNET
 android.release_artifact = apk
 android.enable_androidx = True
 android.private_storage = True
