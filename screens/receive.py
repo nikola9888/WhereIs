@@ -84,7 +84,7 @@ class ReceiveScreen(Screen):
 
                 self.db.create_item_transfer(
                     transfer_id,
-                    None,
+                    item_id,
                     transfer.get("sender_profile_id", ""),
                     profile_id,
                     name,
@@ -220,12 +220,16 @@ class ReceiveScreen(Screen):
                     received_at
                 ) = transfer
 
+                category_name = "Other"
+                for cat in self.db.get_categories():
+                    if cat[0] == category_id:
+                        category_name = cat[1]
+                        break
+
                 card = ItemCard(
                     item_id=item_id,
                     name=name,
-                    category=self.db.get_categories()[category_id - 1][1]
-                    if category_id and category_id <= len(self.db.get_categories())
-                    else "Other",
+                    category=category_name,
                     icon="",
                     location=location or "-",
                     description=(
