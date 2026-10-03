@@ -6,32 +6,15 @@ from kivy.uix.button import Button
 from kivy.uix.label import Label
 from kivy.uix.scrollview import ScrollView
 from kivy.uix.image import Image
-from kivy.uix.behaviors import ButtonBehavior
 from kivy.storage.jsonstore import JsonStore
 from kivy.graphics import Color, RoundedRectangle, Line
 
 import theme
 import os
 from components.icons import get_icon, EMPTY
+from components.item_card import ItemCard
 from database import Database
 from supabase_client import SupabaseClient
-
-
-class ReceivedItemCard(ButtonBehavior, BoxLayout):
-
-    def __init__(self, receive_screen, item_id, **kwargs):
-        super().__init__(**kwargs)
-        self.receive_screen = receive_screen
-        self.item_id = item_id
-
-    def on_release(self):
-        app = App.get_running_app()
-        if not app or not app.root:
-            return
-
-        detail = app.root.get_screen("detail")
-        detail.load_item(self.item_id)
-        app.root.current = "detail"
 
 
 class ReceiveScreen(Screen):
@@ -237,73 +220,20 @@ class ReceiveScreen(Screen):
                     received_at
                 ) = transfer
 
-                card = ReceivedItemCard(
-                    self,
-                    item_id,
-                    orientation="vertical",
-                    spacing=dp(8),
-                    padding=dp(15),
-                    size_hint_y=None,
-                    height=dp(220)
-                )
-
-                with card.canvas.before:
-                    Color(*theme.CARD)
-                    card.bg = RoundedRectangle(
-                        pos=card.pos,
-                        size=card.size,
-                        radius=[dp(22)]
-                    )
-
-                with card.canvas.after:
-                    Color(*theme.ITEM_BORDER)
-                    card.border = Line(
-                        rounded_rectangle=(
-                            card.x,
-                            card.y,
-                            card.width,
-                            card.height,
-                            dp(22)
-                        ),
-                        width=1.2
-                    )
-
-                card.bind(
-                    pos=self.update_card,
-                    size=self.update_card
-                )
-
-                if image_path:
-                    import os
-                    if os.path.exists(image_path):
-                        card.add_widget(Image(
-                            source=image_path,
-                            size_hint_y=None,
-                            height=dp(90),
-                            allow_stretch=True,
-                            keep_ratio=True
-                        ))
-
-                card.add_widget(Label(
-                    text=name,
-                    color=theme.PRIMARY,
-                    font_size=38,
-                    bold=True,
-                    size_hint_y=None,
-                    height=dp(48)
-                ))
-
-                card.add_widget(Label(
-                    text=(
-                        "From: " + sender_profile_id +
-                        "\nLocation: " + (location or "-") +
+                card = ItemCard(
+                    item_id=item_id,
+                    name=name,
+                    category=self.db.get_categories()[category_id - 1][1]
+                    if category_id and category_id <= len(self.db.get_categories())
+                    else "Other",
+                    icon="",
+                    location=location or "-",
+                    description=(
+                        "From: " + (sender_profile_id or "-") +
                         "\n" + (description or "-")
                     ),
-                    color=theme.TEXT,
-                    font_size=28,
-                    halign="left",
-                    valign="middle"
-                ))
+                    image_path=image_path or ""
+                )
 
                 items_box.add_widget(card)
 
