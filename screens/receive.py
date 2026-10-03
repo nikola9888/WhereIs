@@ -6,6 +6,7 @@ from kivy.uix.button import Button
 from kivy.uix.label import Label
 from kivy.uix.scrollview import ScrollView
 from kivy.uix.image import Image
+from kivy.uix.behaviors import ButtonBehavior
 from kivy.storage.jsonstore import JsonStore
 from kivy.graphics import Color, RoundedRectangle, Line
 
@@ -14,6 +15,23 @@ import os
 from components.icons import get_icon, EMPTY
 from database import Database
 from supabase_client import SupabaseClient
+
+
+class ReceivedItemCard(ButtonBehavior, BoxLayout):
+
+    def __init__(self, receive_screen, item_id, **kwargs):
+        super().__init__(**kwargs)
+        self.receive_screen = receive_screen
+        self.item_id = item_id
+
+    def on_release(self):
+        app = App.get_running_app()
+        if not app or not app.root:
+            return
+
+        detail = app.root.get_screen("detail")
+        detail.load_item(self.item_id)
+        app.root.current = "detail"
 
 
 class ReceiveScreen(Screen):
@@ -219,7 +237,9 @@ class ReceiveScreen(Screen):
                     received_at
                 ) = transfer
 
-                card = BoxLayout(
+                card = ReceivedItemCard(
+                    self,
+                    item_id,
                     orientation="vertical",
                     spacing=dp(8),
                     padding=dp(15),
