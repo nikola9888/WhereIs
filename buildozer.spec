@@ -11,7 +11,7 @@ source.include_exts = py,png,jpg,jpeg,webp,kv,json,atlas,ttf
 version = 1.0.2
 android.numeric_version = 100003
 
-requirements = python3==3.10.11,hostpython3==3.10.11,kivy,pyjnius,pillow,requests,qrcode
+requirements = python3==3.10.11,hostpython3==3.10.11,kivy,pyjnius,pillow,requests,qrcode,libzbar,pyzbar
 
 # Use the current python-for-android development branch required for
 # current Android Store submissions / API 36.
