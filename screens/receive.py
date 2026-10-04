@@ -1,4 +1,5 @@
 from kivy.app import App
+from kivy.clock import Clock
 from kivy.metrics import dp
 from kivy.uix.screenmanager import Screen
 from kivy.uix.boxlayout import BoxLayout
@@ -35,6 +36,8 @@ class ReceiveScreen(Screen):
             request_code=self.SCAN_REQUEST_CODE,
             on_image=self.on_qr_image
         )
+        self._sync_running = False
+        self._ui_build_scheduled = False
         self.build_ui()
 
     def get_profile_id(self):
@@ -53,6 +56,8 @@ class ReceiveScreen(Screen):
         except Exception as e:
             print("SUPABASE RECEIVE FETCH ERROR:", repr(e))
             return
+
+        changed = False
 
         for transfer in transfers:
             transfer_id = transfer.get("transfer_id", "")
@@ -108,13 +113,49 @@ class ReceiveScreen(Screen):
                 self.db.mark_transfer_received(transfer_id)
 
                 self.supabase.mark_transfer_received(transfer_id)
+                changed = True
 
             except Exception as e:
                 print("SUPABASE RECEIVE PROCESS ERROR:", repr(e))
 
-    def on_enter(self):
-        self.sync_cloud_transfers()
+        return changed
+
+    def on_pre_enter(self):
         self.build_ui()
+
+    def on_enter(self):
+        if self._sync_running:
+            return
+
+        self._sync_running = True
+
+        def worker():
+            changed = False
+            try:
+                changed = bool(self.sync_cloud_transfers())
+            finally:
+                self._sync_running = False
+
+            if changed:
+                self._schedule_ui_refresh()
+
+        threading.Thread(
+            target=worker,
+            daemon=True
+        ).start()
+
+    def _schedule_ui_refresh(self):
+        if self._ui_build_scheduled:
+            return
+
+        self._ui_build_scheduled = True
+
+        def refresh(dt):
+            self._ui_build_scheduled = False
+            if self.manager and self.manager.current == "receive":
+                self.build_ui()
+
+        Clock.schedule_once(refresh, 0)
 
     def build_ui(self):
         self.clear_widgets()
@@ -270,8 +311,6 @@ class ReceiveScreen(Screen):
 
             scroll.add_widget(items_box)
             root.add_widget(scroll)
-
-        root.add_widget(BoxLayout())
 
         back = self.create_round_button(
             app.tr("back"),
