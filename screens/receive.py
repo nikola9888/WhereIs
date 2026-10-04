@@ -6,6 +6,7 @@ from kivy.uix.button import Button
 from kivy.uix.label import Label
 from kivy.uix.scrollview import ScrollView
 from kivy.uix.image import Image
+from kivy.uix.popup import Popup
 from kivy.storage.jsonstore import JsonStore
 from kivy.graphics import Color, RoundedRectangle, Line
 
@@ -15,6 +16,7 @@ from components.icons import get_icon, EMPTY
 from components.item_card import ItemCard
 from database import Database
 from supabase_client import SupabaseClient
+import qrcode
 
 
 class ReceiveScreen(Screen):
@@ -123,15 +125,27 @@ class ReceiveScreen(Screen):
             padding=dp(18)
         )
 
+        header = BoxLayout(
+            orientation="horizontal",
+            size_hint_y=None,
+            height=dp(60)
+        )
+
         title = Label(
             text="Receive",
             color=theme.PRIMARY,
             font_size=48,
             bold=True,
-            size_hint_y=None,
-            height=dp(60)
+            halign="left",
+            valign="middle"
         )
-        root.add_widget(title)
+        title.bind(size=title.setter("text_size"))
+        header.add_widget(title)
+
+        qr_button = self.create_qr_button()
+        header.add_widget(qr_button)
+
+        root.add_widget(header)
 
         received = self.db.get_received_transfers()
 
@@ -259,6 +273,107 @@ class ReceiveScreen(Screen):
         root.add_widget(back)
 
         self.add_widget(root)
+
+    def create_qr_button(self):
+        button_box = BoxLayout(
+            orientation="vertical",
+            size_hint_x=None,
+            width=dp(92),
+            spacing=dp(0)
+        )
+
+        button = Button(
+            text="▣",
+            size_hint_y=None,
+            height=dp(38),
+            background_normal="",
+            background_down="",
+            background_color=(0, 0, 0, 0),
+            color=theme.PRIMARY,
+            font_size=30,
+            bold=True
+        )
+        button.bind(on_press=self.show_my_qr)
+
+        small_label = Label(
+            text="my QR code",
+            color=theme.TEXT_SECONDARY,
+            font_size=11,
+            size_hint_y=None,
+            height=dp(18)
+        )
+
+        button_box.add_widget(button)
+        button_box.add_widget(small_label)
+        return button_box
+
+    def show_my_qr(self, instance):
+        profile_id = self.get_profile_id()
+        if not profile_id:
+            return
+
+        qr_dir = os.path.join(App.get_running_app().user_data_dir, "qr")
+        os.makedirs(qr_dir, exist_ok=True)
+        qr_path = os.path.join(qr_dir, "my_profile_qr.png")
+
+        try:
+            qr = qrcode.QRCode(
+                version=1,
+                error_correction=qrcode.constants.ERROR_CORRECT_M,
+                box_size=10,
+                border=4
+            )
+            qr.add_data(profile_id)
+            qr.make(fit=True)
+            qr.make_image(fill_color="black", back_color="white").save(qr_path)
+        except Exception as e:
+            print("QR CODE ERROR:", repr(e))
+            return
+
+        content = BoxLayout(
+            orientation="vertical",
+            spacing=dp(12),
+            padding=dp(18)
+        )
+
+        content.add_widget(Image(
+            source=qr_path,
+            allow_stretch=True,
+            keep_ratio=True
+        ))
+
+        content.add_widget(Label(
+            text="My Profile ID\n" + profile_id,
+            color=theme.TEXT,
+            font_size=22,
+            halign="center",
+            valign="middle",
+            size_hint_y=None,
+            height=dp(65)
+        ))
+
+        close = self.create_round_button(
+            "Close",
+            theme.PRIMARY,
+            theme.TEXT,
+            50,
+            18,
+            70,
+            True
+        )
+
+        popup = Popup(
+            title="My QR code",
+            content=content,
+            size_hint=(0.82, 0.72),
+            separator_color=theme.PRIMARY,
+            background_color=theme.CARD,
+            auto_dismiss=True
+        )
+
+        close.bind(on_press=popup.dismiss)
+        content.add_widget(close)
+        popup.open()
 
     def create_round_button(
         self,
