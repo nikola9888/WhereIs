@@ -2,12 +2,15 @@ import uuid
 
 import theme
 from kivy.app import App
+from kivy.clock import Clock
+from kivy.core.window import Window
 from kivy.metrics import dp
 from kivy.storage.jsonstore import JsonStore
 from kivy.uix.boxlayout import BoxLayout
 from kivy.uix.button import Button
 from kivy.uix.label import Label
 from kivy.uix.screenmanager import Screen
+from kivy.uix.scrollview import ScrollView
 from kivy.uix.textinput import TextInput
 from kivy.graphics import Color, RoundedRectangle, Line
 
@@ -24,6 +27,7 @@ class ProfileScreen(Screen):
         self.profile_id = self.get_profile_id()
         self.db = Database()
         self.supabase = SupabaseClient()
+        Window.softinput_mode = "below_target"
         self.build_ui()
 
     def on_enter(self):
@@ -56,11 +60,19 @@ class ProfileScreen(Screen):
 
         self.bind(pos=self.update_bg, size=self.update_bg)
 
+        scroll = ScrollView(
+            do_scroll_x=False,
+            do_scroll_y=True,
+            bar_width=dp(3)
+        )
+
         root = BoxLayout(
             orientation="vertical",
             spacing=dp(15),
-            padding=dp(18)
+            padding=dp(18),
+            size_hint_y=None
         )
+        root.bind(minimum_height=root.setter("height"))
 
         title = Label(
             text="Profile",
@@ -150,6 +162,7 @@ class ProfileScreen(Screen):
         self.connection_input = self.create_input(
             "Enter another Profile ID"
         )
+        self.connection_input.bind(focus=self.on_connection_focus)
         root.add_widget(self.connection_input)
         self.add_input_background(
             root,
@@ -195,7 +208,22 @@ class ProfileScreen(Screen):
         back.bind(on_press=self.go_back)
         root.add_widget(back)
 
-        self.add_widget(root)
+        scroll.add_widget(root)
+        self.add_widget(scroll)
+
+        self.profile_scroll = scroll
+        self.profile_root = root
+
+    def on_connection_focus(self, widget, focused):
+        if focused:
+            Clock.schedule_once(
+                lambda dt: self.profile_scroll.scroll_to(
+                    widget,
+                    padding=dp(40),
+                    animate=True
+                ),
+                0.15
+            )
 
     def create_round_button(
         self,
