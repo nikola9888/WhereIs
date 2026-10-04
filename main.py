@@ -73,6 +73,15 @@ class WhereIsApp(App):
             if not self.root:
                 return
 
+            if request_code == ReceiveScreen.SCAN_REQUEST_CODE:
+                screen = self.root.get_screen("receive")
+                screen.on_activity_result(
+                    request_code,
+                    result_code,
+                    intent
+                )
+                return
+
             if request_code == SettingsScreen.RESTORE_REQUEST_CODE:
                 # Android returns from the file picker outside the normal
                 # Kivy event cycle. Schedule the restore on Kivy's main
