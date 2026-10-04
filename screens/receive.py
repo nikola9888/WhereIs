@@ -12,19 +12,29 @@ from kivy.graphics import Color, RoundedRectangle, Line
 
 import theme
 import os
+import threading
 from components.icons import get_icon, EMPTY
 from components.item_card import ItemCard
 from database import Database
 from supabase_client import SupabaseClient
 import qrcode
+from PIL import Image as PILImage
+from pyzbar.pyzbar import decode as decode_qr
+from camera import Camera
 
 
 class ReceiveScreen(Screen):
+
+    SCAN_REQUEST_CODE = 201
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
         self.db = Database()
         self.supabase = SupabaseClient()
+        self.qr_camera = Camera(
+            request_code=self.SCAN_REQUEST_CODE,
+            on_image=self.on_qr_image
+        )
         self.build_ui()
 
     def get_profile_id(self):
@@ -141,6 +151,9 @@ class ReceiveScreen(Screen):
         )
         title.bind(size=title.setter("text_size"))
         header.add_widget(title)
+
+        scan_button = self.create_scan_button()
+        header.add_widget(scan_button)
 
         qr_button = self.create_qr_button()
         header.add_widget(qr_button)
@@ -273,6 +286,140 @@ class ReceiveScreen(Screen):
         root.add_widget(back)
 
         self.add_widget(root)
+
+    def create_scan_button(self):
+        button_box = BoxLayout(
+            orientation="vertical",
+            size_hint_x=None,
+            width=dp(92),
+            spacing=dp(0)
+        )
+
+        button = Button(
+            text="⌾",
+            size_hint_y=None,
+            height=dp(38),
+            background_normal="",
+            background_down="",
+            background_color=(0, 0, 0, 0),
+            color=theme.PRIMARY,
+            font_size=30,
+            bold=True
+        )
+        button.bind(on_press=self.open_qr_scanner)
+
+        small_label = Label(
+            text="scan QR",
+            color=theme.TEXT_SECONDARY,
+            font_size=11,
+            size_hint_y=None,
+            height=dp(18)
+        )
+
+        button_box.add_widget(button)
+        button_box.add_widget(small_label)
+        return button_box
+
+    def open_qr_scanner(self, instance):
+        try:
+            print("QR SCANNER: OPEN CAMERA")
+            started = self.qr_camera.open()
+            print("QR SCANNER: CAMERA OPEN RETURNED:", started)
+        except Exception as e:
+            print("QR SCANNER OPEN ERROR:", repr(e))
+
+    def on_activity_result(self, request_code, result_code, intent):
+        if request_code != self.SCAN_REQUEST_CODE:
+            return
+
+        try:
+            self.qr_camera.handle_result(
+                request_code,
+                result_code,
+                intent
+            )
+        except Exception as e:
+            print("QR SCANNER RESULT ERROR:", repr(e))
+
+    def on_qr_image(self, image_path):
+        print("QR SCANNER: IMAGE RECEIVED:", image_path)
+        threading.Thread(
+            target=self._decode_qr_image,
+            args=(image_path,),
+            daemon=True
+        ).start()
+
+    def _decode_qr_image(self, image_path):
+        try:
+            decoded = decode_qr(PILImage.open(image_path))
+
+            if not decoded:
+                print("QR SCANNER: NO QR CODE FOUND")
+                return
+
+            profile_id = ""
+            for result in decoded:
+                try:
+                    value = result.data.decode("utf-8").strip()
+                except Exception:
+                    value = str(result.data).strip()
+
+                if value:
+                    profile_id = value.upper()
+                    break
+
+            if not profile_id:
+                print("QR SCANNER: EMPTY QR VALUE")
+                return
+
+            print("QR SCANNER: PROFILE ID:", profile_id)
+
+            profile = self.supabase.get_profile(profile_id)
+            if not profile:
+                print("QR SCANNER: PROFILE NOT FOUND")
+                return
+
+            name = (profile.get("name") or "").strip()
+            if not name:
+                name = profile_id
+
+            self.db.add_connection(profile_id, name)
+
+            Clock.schedule_once(
+                lambda dt: self.show_add_popup(name),
+                0
+            )
+
+        except Exception as e:
+            print("QR SCANNER DECODE ERROR:", repr(e))
+        finally:
+            try:
+                self.qr_camera.delete_output()
+            except Exception:
+                pass
+
+    def show_add_popup(self, name):
+        button = Button(
+            text="Add: " + name,
+            background_normal="",
+            background_down="",
+            background_color=(0, 0, 0, 0),
+            color=theme.TEXT,
+            font_size=30,
+            bold=True
+        )
+
+        popup = Popup(
+            title="",
+            content=button,
+            size_hint=(0.78, 0.22),
+            separator_color=theme.PRIMARY,
+            background_color=theme.CARD,
+            auto_dismiss=True
+        )
+
+        button.bind(on_press=popup.dismiss)
+        popup.open()
 
     def create_qr_button(self):
         button_box = BoxLayout(
