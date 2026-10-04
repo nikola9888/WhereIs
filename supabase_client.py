@@ -48,6 +48,21 @@ class SupabaseClient:
         )
         self._raise_for_status(response, "Profile sync")
 
+    def get_profile(self, profile_id):
+        response = requests.get(
+            SUPABASE_REST_URL + "/profiles",
+            headers=self.headers,
+            params={
+                "profile_id": "eq." + (profile_id or "").strip().upper(),
+                "select": "profile_id,name",
+                "limit": "1",
+            },
+            timeout=TIMEOUT,
+        )
+        self._raise_for_status(response, "Profile lookup")
+        rows = response.json()
+        return rows[0] if rows else None
+
     def upload_file(self, local_path, remote_path):
         with open(local_path, "rb") as file:
             data = file.read()
