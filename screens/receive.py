@@ -399,10 +399,83 @@ class ReceiveScreen(Screen):
 
     def _decode_qr_image(self, image_path):
         try:
-            decoded = decode_qr(PILImage.open(image_path))
+            if not image_path or not os.path.isfile(image_path):
+                print("QR SCANNER: IMAGE FILE NOT FOUND:", image_path)
+                Clock.schedule_once(
+                    lambda dt: self.show_qr_message(
+                        "QR image was not received."
+                    ),
+                    0
+                )
+                return
+
+            original = PILImage.open(image_path).convert("RGB")
+            print(
+                "QR SCANNER: IMAGE SIZE:",
+                original.size,
+                "FILE:",
+                os.path.getsize(image_path)
+            )
+
+            images = [original]
+            width, height = original.size
+
+            if width < 1600 or height < 1600:
+                scale = max(
+                    2,
+                    min(
+                        6,
+                        int(1600 / max(1, min(width, height))) + 1
+                    )
+                )
+                images.append(
+                    original.resize(
+                        (width * scale, height * scale),
+                        PILImage.Resampling.LANCZOS
+                    )
+                )
+
+            gray = original.convert("L")
+            images.append(gray)
+
+            enlarged_gray = gray.resize(
+                (gray.width * 4, gray.height * 4),
+                PILImage.Resampling.LANCZOS
+            )
+            images.append(enlarged_gray)
+            images.append(
+                enlarged_gray.point(
+                    lambda value: 0 if value < 150 else 255
+                )
+            )
+
+            decoded = []
+            for index, image in enumerate(images):
+                try:
+                    decoded = decode_qr(image)
+                except Exception as e:
+                    print(
+                        "QR SCANNER DECODE VARIANT ERROR:",
+                        index,
+                        repr(e)
+                    )
+
+                if decoded:
+                    print(
+                        "QR SCANNER: QR FOUND ON VARIANT:",
+                        index
+                    )
+                    break
 
             if not decoded:
                 print("QR SCANNER: NO QR CODE FOUND")
+                Clock.schedule_once(
+                    lambda dt: self.show_qr_message(
+                        "QR code nije prepoznat.\n\n"
+                        "Usmeri kameru direktno na QR i potvrdi fotografiju."
+                    ),
+                    0
+                )
                 return
 
             profile_id = ""
@@ -418,13 +491,25 @@ class ReceiveScreen(Screen):
 
             if not profile_id:
                 print("QR SCANNER: EMPTY QR VALUE")
+                Clock.schedule_once(
+                    lambda dt: self.show_qr_message(
+                        "QR code je prazan."
+                    ),
+                    0
+                )
                 return
 
             print("QR SCANNER: PROFILE ID:", profile_id)
 
             profile = self.supabase.get_profile(profile_id)
             if not profile:
-                print("QR SCANNER: PROFILE NOT FOUND")
+                print("QR SCANNER: PROFILE NOT FOUND:", profile_id)
+                Clock.schedule_once(
+                    lambda dt: self.show_qr_message(
+                        "Profile ID nije pronađen."
+                    ),
+                    0
+                )
                 return
 
             name = (profile.get("name") or "").strip()
@@ -434,21 +519,50 @@ class ReceiveScreen(Screen):
             self.db.add_connection(profile_id, name)
 
             Clock.schedule_once(
-                lambda dt: self.show_add_popup(name),
+                lambda dt: self.show_add_popup(name, profile_id),
                 0
             )
 
         except Exception as e:
             print("QR SCANNER DECODE ERROR:", repr(e))
+            Clock.schedule_once(
+                lambda dt: self.show_qr_message(
+                    "QR skeniranje nije uspelo."
+                ),
+                0
+            )
         finally:
             try:
                 self.qr_camera.delete_output()
             except Exception:
                 pass
 
-    def show_add_popup(self, name):
+    def show_qr_message(self, message):
         button = Button(
-            text="Add: " + name,
+            text=message,
+            background_normal="",
+            background_down="",
+            background_color=(0, 0, 0, 0),
+            color=theme.TEXT,
+            font_size=24,
+            bold=True
+        )
+
+        popup = Popup(
+            title="QR",
+            content=button,
+            size_hint=(0.82, 0.30),
+            separator_color=theme.PRIMARY,
+            background_color=theme.CARD,
+            auto_dismiss=True
+        )
+
+        button.bind(on_press=popup.dismiss)
+        popup.open()
+
+    def show_add_popup(self, name, profile_id=""):
+        button = Button(
+            text="Add: " + name + ("\n" + profile_id if profile_id else ""),
             background_normal="",
             background_down="",
             background_color=(0, 0, 0, 0),
