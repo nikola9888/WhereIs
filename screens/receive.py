@@ -64,11 +64,20 @@ class ReceiveScreen(Screen):
             if not transfer_id:
                 continue
 
-            if self.db.get_transfer(transfer_id):
+            existing_transfer = self.db.get_transfer(transfer_id)
+            if existing_transfer:
                 try:
+                    # A previous receive attempt may have created the local
+                    # transfer before the UI crashed or was interrupted.
+                    # In that case do not discard it: finish the local
+                    # receive state and only then acknowledge Supabase.
+                    if existing_transfer[10] != "received":
+                        self.db.mark_transfer_received(transfer_id)
+
                     self.supabase.mark_transfer_received(transfer_id)
+                    changed = True
                 except Exception as e:
-                    print("SUPABASE RECEIVE MARK ERROR:", repr(e))
+                    print("SUPABASE RECEIVE EXISTING ERROR:", repr(e))
                 continue
 
             name = transfer.get("name", "")
