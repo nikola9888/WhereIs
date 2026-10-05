@@ -27,7 +27,7 @@ class ProfileScreen(Screen):
         self.profile_id = self.get_profile_id()
         self.db = Database()
         self.supabase = SupabaseClient()
-        Window.softinput_mode = "below_target"
+        Window.softinput_mode = "pan"
         self.build_ui()
 
     def on_enter(self):
@@ -162,7 +162,6 @@ class ProfileScreen(Screen):
         self.connection_input = self.create_input(
             "Enter another Profile ID"
         )
-        self.connection_input.bind(focus=self.on_connection_focus)
         root.add_widget(self.connection_input)
         self.add_input_background(
             root,
@@ -213,17 +212,6 @@ class ProfileScreen(Screen):
 
         self.profile_scroll = scroll
         self.profile_root = root
-
-    def on_connection_focus(self, widget, focused):
-        if focused:
-            Clock.schedule_once(
-                lambda dt: self.profile_scroll.scroll_to(
-                    widget,
-                    padding=dp(40),
-                    animate=True
-                ),
-                0.15
-            )
 
     def create_round_button(
         self,
